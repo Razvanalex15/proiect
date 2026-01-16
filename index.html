@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Country Search</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="app">
+    <h1>Country Search</h1>
+
+    <!-- Search row -->
+    <div class="search-row">
+      <input
+        id="countryInput"
+        list="countriesList"
+        placeholder="ex: romania / mex / uni"
+        autocomplete="off"
+      />
+      <datalist id="countriesList"></datalist>
+
+      <button id="searchBtn" type="button">Search</button>
+    </div>
+
+    <!-- Status / errors -->
+    <div id="status" class="status"></div>
+
+    <!-- Results list (for partial search + arrow navigation) -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Results</h2>
+        <small class="hint">Folosește ↑ ↓ și Enter</small>
+      </div>
+
+      <ul id="resultsList" class="list"></ul>
+    </div>
+
+    <!-- Selected country details (card) -->
+    <div id="result" class="result-area"></div>
+
+    <!-- Two columns: History + Favorites -->
+    <div class="grid-2">
+      <!-- History -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Last searches</h2>
+          <button id="clearHistoryBtn" class="btn-ghost" type="button">
+            Clear
+          </button>
+        </div>
+        <ul id="historyList" class="list"></ul>
+      </div>
+
+      <!-- Favorites -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Favorites</h2>
+          <button id="clearFavBtn" class="btn-ghost" type="button">
+            Clear
+          </button>
+        </div>
+        <ul id="favoritesList" class="list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script type="module" src="main.js"></script>
+</body>
+</html>

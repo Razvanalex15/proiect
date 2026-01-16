@@ -1,0 +1,339 @@
+:root{
+  --bg1:#d9f0f6;
+  --bg2:#cbe8ef;
+
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#667085;
+
+  --border:#e6eaf0;
+  --shadow: 0 18px 45px rgba(15, 23, 42, .12);
+  --shadow-soft: 0 10px 25px rgba(15, 23, 42, .10);
+
+  --blue:#3b82f6;
+  --blue2:#2563eb;
+  --blue-soft:#e0ebff;
+
+  --danger:#ef4444;
+}
+
+*{
+  box-sizing:border-box;
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+body{
+  margin:0;
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:34px 18px;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 700px at 50% 0%, rgba(255,255,255,.7) 0%, rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, var(--bg1), var(--bg2));
+}
+
+/* ===== APP ===== */
+
+.app{
+  width:min(1000px, 100%);
+}
+
+h1{
+  margin: 0 0 18px;
+  text-align:center;
+  font-size: 46px;
+  font-weight: 900;
+}
+
+/* ===== SEARCH ===== */
+
+.search-row{
+  display:flex;
+  gap:14px;
+  justify-content:center;
+  margin-bottom:18px;
+}
+
+.search-row input{
+  width:min(760px, 100%);
+  padding:16px 18px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.9);
+  outline:none;
+  font-size:16px;
+  box-shadow: 0 8px 18px rgba(0,0,0,.08);
+}
+
+.search-row input:focus{
+  border-color:var(--blue);
+}
+
+.search-row button{
+  padding:15px 22px;
+  border-radius:12px;
+  border:none;
+  background: linear-gradient(180deg, var(--blue), var(--blue2));
+  color:white;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow: 0 12px 22px rgba(37,99,235,.28);
+}
+
+/* ===== HINT + STATUS ===== */
+
+.hint{
+  text-align:center;
+  font-size:13px;
+  color:var(--muted);
+  font-weight:700;
+  margin-bottom:14px;
+}
+
+.status{
+  margin:10px 0 14px;
+  text-align:center;
+  color:var(--muted);
+  font-weight:700;
+}
+
+/* ===== PANELS ===== */
+
+.panel{
+  background: rgba(255,255,255,.75);
+  border-radius:18px;
+  box-shadow:var(--shadow-soft);
+  padding:16px 18px;
+  margin:18px auto;
+  max-width:900px;
+}
+
+.panel-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.panel-header h2{
+  margin:0;
+  font-size:18px;
+  font-weight:900;
+}
+
+/* ===== BUTTONS ===== */
+
+.link-btn{
+  background:none;
+  border:none;
+  font-weight:900;
+  cursor:pointer;
+  color:var(--blue);
+}
+
+.link-btn.danger{
+  color:var(--danger);
+}
+
+/* ===== LISTS (fix spacing + chip actions) ===== */
+
+.list{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:grid;
+  gap:8px;
+}
+
+/* each row */
+.list li{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background: rgba(255,255,255,.85);
+  cursor:pointer;
+  transition: background .15s, transform .1s;
+}
+
+.list li:hover{
+  background:white;
+  transform: translateY(-1px);
+}
+
+.list li.active{
+  background: #e0edff;
+  outline: 2px solid var(--blue);
+}
+
+/* country name takes all space and can truncate nicely */
+.list li span{
+  flex:1;
+  font-weight:800;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* "search" / "remove" as a pill (works if you use <small>) */
+.list li small{
+  flex:0 0 auto;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#1d4ed8;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+/* if you use <button> in list rows */
+.list li button{
+  flex:0 0 auto;
+  border:none;
+  background:#eef2ff;
+  color:#1d4ed8;
+  font-weight:900;
+  padding:6px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.list li button:hover{
+  background:#dbe7ff;
+}
+
+/* optional: red pill for remove if you add class="danger-chip" */
+.list li .danger-chip{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+/* ===== RESULT CARD ===== */
+
+.card{
+  background:var(--card);
+  border-radius:20px;
+  box-shadow:var(--shadow);
+  padding:22px 24px;
+  display:grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap:18px;
+  align-items:center;
+  max-width:900px;
+  margin:0 auto 22px;
+}
+
+.left{
+  display:flex;
+  gap:18px;
+  align-items:center;
+}
+
+.flag{
+  width:110px;
+  height:74px;
+  border-radius:14px;
+  object-fit:cover;
+  box-shadow:var(--shadow-soft);
+}
+
+.country-name{
+  font-size:26px;
+  font-weight:900;
+  margin:0 0 8px;
+}
+
+.meta{
+  display:grid;
+  gap:8px;
+  font-size:15.5px;
+}
+
+.meta span{
+  color:var(--muted);
+  font-weight:800;
+  margin-right:6px;
+}
+
+/* RIGHT SIDE: population + favorites button nicely aligned */
+.right{
+  text-align:right;
+  font-size:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  align-items:flex-end;
+}
+
+.right span{
+  color:var(--muted);
+  font-weight:900;
+}
+
+/* style for the favorites link if you move it in .right and give class="fav-btn" */
+.fav-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#eef2ff;
+  color:#1d4ed8;
+  font-weight:900;
+  text-decoration:none;
+}
+
+.fav-btn:hover{
+  background:#dbe7ff;
+  text-decoration:none;
+}
+
+/* ===== LINKS ===== */
+
+a{
+  color:#1d4ed8;
+  font-weight:900;
+  text-decoration:none;
+}
+
+a:hover{
+  text-decoration:underline;
+}
+
+/* ===== GRID ===== */
+
+.grid-2{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:18px;
+  max-width:900px;
+  margin:0 auto;
+}
+
+/* ===== MOBILE ===== */
+
+@media (max-width:760px){
+  h1{ font-size:34px; }
+
+  .search-row{
+    flex-direction:column;
+  }
+
+  .card{
+    grid-template-columns:1fr;
+  }
+
+  .right{
+    text-align:left;
+    align-items:flex-start;
+  }
+
+  .grid-2{
+    grid-template-columns:1fr;
+  }
+}
