@@ -1,0 +1,124 @@
+const $ = (s) => document.querySelector(s);
+
+/* ===== Weather code map ===== */
+function weatherCodeText(code) {
+  const c = Number(code);
+  if (c === 0) return "Senin";
+  if ([1, 2, 3].includes(c)) return "Parțial noros";
+  if ([45, 48].includes(c)) return "Ceață";
+  if ([51, 53, 55].includes(c)) return "Burniță";
+  if ([61, 63, 65].includes(c)) return "Ploaie";
+  if ([71, 73, 75].includes(c)) return "Ninsoare";
+  if ([80, 81, 82].includes(c)) return "Averse";
+  if ([95, 96, 99].includes(c)) return "Furtună";
+  return "Cod: " + c;
+}
+
+/* ===== Geocoding ===== */
+async function geocode(name) {
+  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+  url.searchParams.set("name", name);
+  url.searchParams.set("count", "5");
+  url.searchParams.set("language", "ro");
+  url.searchParams.set("format", "json");
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Geocoding failed");
+  const data = await res.json();
+  return data.results || [];
+}
+
+/* ===== Forecast ===== */
+async function forecast(lat, lon) {
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", lat);
+  url.searchParams.set("longitude", lon);
+  url.searchParams.set("current", "temperature_2m,wind_speed_10m,weather_code");
+  url.searchParams.set("hourly", "temperature_2m,wind_speed_10m,weather_code");
+  url.searchParams.set("daily", "temperature_2m_min,temperature_2m_max,weather_code");
+  url.searchParams.set("forecast_days", "7");
+  url.searchParams.set("timezone", "auto");
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Forecast failed");
+  return res.json();
+}
+
+/* ===== UI helpers ===== */
+function fillPick(results) {
+  const pick = $("#pick");
+  pick.innerHTML = "";
+
+  results.forEach((r, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${r.name} (${r.country})`;
+    pick.appendChild(opt);
+  });
+
+  $("#pickWrap").style.display = results.length ? "block" : "none";
+}
+
+function render(place, data) {
+  $("#out").style.display = "block";
+
+  $("#place").textContent = `${place.name}, ${place.country}`;
+  $("#meta").textContent = `Coordonate: ${place.latitude.toFixed(2)}, ${place.longitude.toFixed(2)}`;
+
+  const cur = data.current;
+  $("#now").textContent =
+    `${cur.temperature_2m}${data.current_units.temperature_2m} • ` +
+    `${weatherCodeText(cur.weather_code)}`;
+
+  $("#hourRows").innerHTML = "";
+  for (let i = 0; i < 12; i++) {
+    $("#hourRows").innerHTML += `
+      <tr>
+        <td>${data.hourly.time[i].replace("T", " ")}</td>
+        <td>${data.hourly.temperature_2m[i]}</td>
+        <td>${data.hourly.wind_speed_10m[i]}</td>
+        <td>${data.hourly.weather_code[i]}</td>
+      </tr>`;
+  }
+
+  $("#dayRows").innerHTML = "";
+  for (let i = 0; i < data.daily.time.length; i++) {
+    $("#dayRows").innerHTML += `
+      <tr>
+        <td>${data.daily.time[i]}</td>
+        <td>${data.daily.temperature_2m_min[i]} / ${data.daily.temperature_2m_max[i]}</td>
+        <td>${data.daily.weather_code[i]}</td>
+      </tr>`;
+  }
+}
+
+/* ===== Events ===== */
+let lastResults = [];
+
+async function onSearch() {
+  $("#status").textContent = "Caut orașe…";
+  $("#err").textContent = "";
+  $("#out").style.display = "none";
+
+  try {
+    lastResults = await geocode($("#q").value);
+    fillPick(lastResults);
+    $("#status").textContent = "Alege locația.";
+  } catch (e) {
+    $("#err").textContent = e.message;
+  }
+}
+
+async function onLoadForecast() {
+  const place = lastResults[$("#pick").value];
+  const data = await forecast(place.latitude, place.longitude);
+  render(place, data);
+}
+
+$("#searchBtn").addEventListener("click", onSearch);
+$("#loadBtn").addEventListener("click", onLoadForecast);
+$("#q").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") onSearch();
+});
+
+onSearch();
