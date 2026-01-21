@@ -1,6 +1,21 @@
 const $ = (s) => document.querySelector(s);
 
-/* ===== Weather code map ===== */
+let map;
+let marker;
+
+function initMap() {
+  if (map) return;
+
+  map = L.map("map").setView([44.4323, 26.1063], 11);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
+
+  marker = L.marker([44.4323, 26.1063]).addTo(map);
+}
+
 function weatherCodeText(code) {
   const c = Number(code);
   if (c === 0) return "Senin";
@@ -14,7 +29,6 @@ function weatherCodeText(code) {
   return "Cod: " + c;
 }
 
-/* ===== Geocoding ===== */
 async function geocode(name) {
   const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
   url.searchParams.set("name", name);
@@ -28,7 +42,6 @@ async function geocode(name) {
   return data.results || [];
 }
 
-/* ===== Forecast ===== */
 async function forecast(lat, lon) {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", lat);
@@ -44,7 +57,6 @@ async function forecast(lat, lon) {
   return res.json();
 }
 
-/* ===== UI helpers ===== */
 function fillPick(results) {
   const pick = $("#pick");
   pick.innerHTML = "";
@@ -70,6 +82,19 @@ function render(place, data) {
     `${cur.temperature_2m}${data.current_units.temperature_2m} • ` +
     `${weatherCodeText(cur.weather_code)}`;
 
+  initMap();
+  map.setView([place.latitude, place.longitude], 11);
+  marker.setLatLng([place.latitude, place.longitude]);
+
+  marker
+    .bindPopup(
+      `<b>${place.name}, ${place.country}</b><br>` +
+      `${cur.temperature_2m}${data.current_units.temperature_2m} • ${weatherCodeText(cur.weather_code)}`
+    )
+    .openPopup();
+
+  setTimeout(() => map.invalidateSize(), 0);
+
   $("#hourRows").innerHTML = "";
   for (let i = 0; i < 12; i++) {
     $("#hourRows").innerHTML += `
@@ -92,7 +117,6 @@ function render(place, data) {
   }
 }
 
-/* ===== Events ===== */
 let lastResults = [];
 
 async function onSearch() {
@@ -102,6 +126,12 @@ async function onSearch() {
 
   try {
     lastResults = await geocode($("#q").value);
+    if (!lastResults.length) {
+      $("#status").textContent = "";
+      $("#err").textContent = "Nu am găsit rezultate.";
+      $("#pickWrap").style.display = "none";
+      return;
+    }
     fillPick(lastResults);
     $("#status").textContent = "Alege locația.";
   } catch (e) {
@@ -110,7 +140,7 @@ async function onSearch() {
 }
 
 async function onLoadForecast() {
-  const place = lastResults[$("#pick").value];
+  const place = lastResults[Number($("#pick").value)];
   const data = await forecast(place.latitude, place.longitude);
   render(place, data);
 }
@@ -122,3 +152,197 @@ $("#q").addEventListener("keydown", (e) => {
 });
 
 onSearch();
+
+
+
+
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Vremea (Open-Meteo)</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+</head>
+<body>
+  <div class="wrap">
+    <h1>Vremea pe oraș (Geocoding → Forecast)</h1>
+
+    <div class="card">
+      <div class="row">
+        <input id="q" placeholder="Scrie un oraș (ex: București)" value="București" />
+        <button id="searchBtn">Caută</button>
+        <span class="muted">Tip: scrie minim 3 litere pentru rezultate mai bune.</span>
+      </div>
+
+      <p id="status" class="muted"></p>
+      <p id="err" class="error"></p>
+
+      <div id="pickWrap" style="display:none; margin-top: 10px;">
+        <div class="row">
+          <label for="pick" class="muted">Alege locația:</label>
+          <select id="pick"></select>
+          <button id="loadBtn">Afișează vremea</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="out" class="card" style="display:none;">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <h2 id="place"></h2>
+          <div id="meta" class="muted"></div>
+        </div>
+        <div class="pill" id="now"></div>
+      </div>
+
+      <div id="map" class="map"></div>
+
+      <div class="grid2">
+        <div>
+          <h3>Următoarele 12 ore</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Ora</th>
+                <th>Temp</th>
+                <th>Vânt</th>
+                <th>Cod</th>
+              </tr>
+            </thead>
+            <tbody id="hourRows"></tbody>
+          </table>
+        </div>
+
+        <div>
+          <h3>Următoarele 7 zile</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Zi</th>
+                <th>Min / Max</th>
+                <th>Cod</th>
+              </tr>
+            </thead>
+            <tbody id="dayRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+
+
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, Arial, sans-serif;
+  margin: 0;
+  padding: 24px;
+  background: #f7f8fa;
+  color: #111;
+}
+
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.card {
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  padding: 16px;
+  background: #fff;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+input,
+select,
+button {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.muted {
+  opacity: 0.75;
+}
+
+.error {
+  color: #b00020;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+@media (max-width: 820px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+table th,
+table td {
+  text-align: left;
+  padding: 10px;
+  border-top: 1px solid #eee;
+}
+
+table th {
+  font-weight: 650;
+}
+
+.pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid #e6e6e6;
+  border-radius: 999px;
+}
+
+.map {
+  margin-top: 14px;
+  height: 320px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  background: #fff;
+}
