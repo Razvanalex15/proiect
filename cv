@@ -110,6 +110,7 @@
 
 
 
+
 * { box-sizing: border-box; }
 
 /* Variabile - Tema Light" */
@@ -259,19 +260,32 @@ table th{ font-weight: 650; }
 
 
 
+
 const $ = (s) => document.querySelector(s);
 
-/* aici salvez alegerea in localStorage in functie de tema(dark/light) ca sa ramana si dupa refresh */
-const b = document.getElementById("themeBtn");
-const r = document.documentElement;
-const setTheme = t => (r.dataset.theme = t, localStorage.setItem("theme", t), b && (b.textContent = t === "dark" ? "☀️" : "🌙"));
-setTheme(localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
-b?.addEventListener("click", () => (setTheme(r.dataset.theme === "dark" ? "light" : "dark"), setTimeout(() => map?.invalidateSize(), 0)));
+/* Tema (light/dark) - o salvez in localStorage ca sa ramana si dupa refresh */
+const root = document.documentElement;
+const btn = document.getElementById("themeBtn");
+
+function setTheme(theme) {
+  root.dataset.theme = theme;
+  localStorage.setItem("theme", theme);
+  if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
+}
+
+setTheme(
+  localStorage.getItem("theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+);
+
+btn?.addEventListener("click", () =>
+  setTheme(root.dataset.theme === "dark" ? "light" : "dark")
+);
 
 let map;
 let marker;
 
-/* Incep cu pozitia initiala a Bucurestiului si adaug un marker initial pe harta */
+/* Pornesc harta din Bucuresti(default) si pun un marker initial */
 function initMap() {
   if (map) return;
 
@@ -285,7 +299,7 @@ function initMap() {
   marker = L.marker([44.4323, 26.1063]).addTo(map);
 }
 
-/* traduc codurile meteo in text, gasite pe api-ul open meteo */
+/* Traduc codurile meteo(WMO) in text */
 function weatherCodeText(code) {
   const c = Number(code);
   if (c === 0) return "Senin";
@@ -299,7 +313,7 @@ function weatherCodeText(code) {
   return "Cod: " + c;
 }
 
-/* Gaseste coordonatele orasului, trimit request la API de geocoding */
+/* Geocoding: gasesc coordonatele orasului */
 async function geocode(name) {
   const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
   url.searchParams.set("name", name);
@@ -313,7 +327,7 @@ async function geocode(name) {
   return data.results || [];
 }
 
-/* iau prognoza meteo pentru coordonate */
+/* Forecast: iau prognoza pe coordonate */
 async function forecast(lat, lon) {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", lat);
@@ -329,7 +343,7 @@ async function forecast(lat, lon) {
   return res.json();
 }
 
-/* umple dropdown-ul cu orasele gasite */
+/* Umplu dropdown-ul cu rezultatele gasite */
 function fillPick(results) {
   const pick = $("#pick");
   pick.innerHTML = "";
@@ -344,7 +358,7 @@ function fillPick(results) {
   $("#pickWrap").style.display = results.length ? "block" : "none";
 }
 
-/* functia render afiseaza toata partea de UI */
+/* Afisez tot UI-ul dupa ce am datele */
 function render(place, data) {
   $("#out").style.display = "block";
 
@@ -356,6 +370,7 @@ function render(place, data) {
     `${cur.temperature_2m}${data.current_units.temperature_2m} • ` +
     `${weatherCodeText(cur.weather_code)}`;
 
+  /* update harta */
   initMap();
   map.setView([place.latitude, place.longitude], 11);
   marker.setLatLng([place.latitude, place.longitude]);
@@ -369,6 +384,7 @@ function render(place, data) {
 
   setTimeout(() => map.invalidateSize(), 0);
 
+  /* tabel ore */
   $("#hourRows").innerHTML = "";
   for (let i = 0; i < 12; i++) {
     $("#hourRows").innerHTML += `
@@ -380,6 +396,7 @@ function render(place, data) {
       </tr>`;
   }
 
+  /* tabel zile */
   $("#dayRows").innerHTML = "";
   for (let i = 0; i < data.daily.time.length; i++) {
     $("#dayRows").innerHTML += `
@@ -393,20 +410,23 @@ function render(place, data) {
 
 let lastResults = [];
 
-/* pun status "Caut orase..." si cere geocoding pentru valoarea din input */
+/* Caut orasul din input */
 async function onSearch() {
   $("#status").textContent = "Caut orașe…";
   $("#err").textContent = "";
   $("#out").style.display = "none";
 
   try {
-    lastResults = await geocode($("#q").value);
+    const query = $("#q").value.trim();
+    lastResults = await geocode(query);
+
     if (!lastResults.length) {
       $("#status").textContent = "";
       $("#err").textContent = "Nu am găsit rezultate.";
       $("#pickWrap").style.display = "none";
       return;
     }
+
     fillPick(lastResults);
     $("#status").textContent = "Alege locația.";
   } catch (e) {
@@ -414,7 +434,7 @@ async function onSearch() {
   }
 }
 
-/* cere prognoza pe coordonate */
+/* Incarc prognoza pentru orasul selectat */
 async function onLoadForecast() {
   const place = lastResults[Number($("#pick").value)];
   const data = await forecast(place.latitude, place.longitude);
@@ -427,5 +447,5 @@ $("#q").addEventListener("keydown", (e) => {
   if (e.key === "Enter") onSearch();
 });
 
-/* Auto-run la inceput */
+/* Auto-run la inceput (Bucuresti e pus by default in input) */
 onSearch();
