@@ -261,60 +261,39 @@ table th{ font-weight: 650; }
 
 
 
-const $ = (s) => document.querySelector(s);
-
 /* Tema (light/dark) - o salvez in localStorage ca sa ramana si dupa refresh */
 const root = document.documentElement;
 const btn = document.getElementById("themeBtn");
 
-function setTheme(theme) {
+export function setTheme(theme) {
   root.dataset.theme = theme;
   localStorage.setItem("theme", theme);
   if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
 }
 
-setTheme(
-  localStorage.getItem("theme") ||
-  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-);
+export function initTheme() {
+  setTheme(
+    localStorage.getItem("theme") ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+  );
 
-btn?.addEventListener("click", () =>
-  setTheme(root.dataset.theme === "dark" ? "light" : "dark")
-);
-
-let map;
-let marker;
-
-/* Pornesc harta din Bucuresti(default) si pun un marker initial */
-function initMap() {
-  if (map) return;
-
-  map = L.map("map").setView([44.4323, 26.1063], 11);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(map);
-
-  marker = L.marker([44.4323, 26.1063]).addTo(map);
+  if (btn) {
+    btn.addEventListener("click", () =>
+      setTheme(root.dataset.theme === "dark" ? "light" : "dark")
+    );
+  }
 }
 
-/* Traduc codurile meteo(WMO) in text */
-function weatherCodeText(code) {
-  const c = Number(code);
-  if (c === 0) return "Senin";
-  if ([1, 2, 3].includes(c)) return "Parțial noros";
-  if ([45, 48].includes(c)) return "Ceață";
-  if ([51, 53, 55].includes(c)) return "Burniță";
-  if ([61, 63, 65].includes(c)) return "Ploaie";
-  if ([71, 73, 75].includes(c)) return "Ninsoare";
-  if ([80, 81, 82].includes(c)) return "Averse";
-  if ([95, 96, 99].includes(c)) return "Furtună";
-  return "Cod: " + c;
-}
+
+
+
+
+
+
+
 
 /* Geocoding: gasesc coordonatele orasului */
-async function geocode(name) {
+export async function geocode(name) {
   const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
   url.searchParams.set("name", name);
   url.searchParams.set("count", "5");
@@ -328,7 +307,7 @@ async function geocode(name) {
 }
 
 /* Forecast: iau prognoza pe coordonate */
-async function forecast(lat, lon) {
+export async function forecast(lat, lon) {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", lat);
   url.searchParams.set("longitude", lon);
@@ -342,6 +321,84 @@ async function forecast(lat, lon) {
   if (!res.ok) throw new Error("Forecast failed");
   return res.json();
 }
+
+/* Traduc codurile meteo(WMO) in text */
+export function weatherCodeText(code) {
+  const c = Number(code);
+  if (c === 0) return "Senin";
+  if ([1, 2, 3].includes(c)) return "Parțial noros";
+  if ([45, 48].includes(c)) return "Ceață";
+  if ([51, 53, 55].includes(c)) return "Burniță";
+  if ([61, 63, 65].includes(c)) return "Ploaie";
+  if ([71, 73, 75].includes(c)) return "Ninsoare";
+  if ([80, 81, 82].includes(c)) return "Averse";
+  if ([95, 96, 99].includes(c)) return "Furtună";
+  return "Cod: " + c;
+}
+
+
+
+
+
+
+
+// map.js
+let map;
+let marker;
+
+/* Pornesc harta din Bucuresti(default) si pun un marker initial */
+export function initMap() {
+  if (map) return map;
+
+  map = L.map("map").setView([44.4323, 26.1063], 11);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
+
+  marker = L.marker([44.4323, 26.1063]).addTo(map);
+  return map;
+}
+
+export function updateMap({ lat, lon, popupHtml }) {
+  initMap();
+  map.setView([lat, lon], 11);
+  marker.setLatLng([lat, lon]);
+
+  if (popupHtml) marker.bindPopup(popupHtml).openPopup();
+
+  /* Leaflet are nevoie de refresh */
+  setTimeout(() => map.invalidateSize(), 0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { initTheme } from "./theme.js";
+import { geocode, forecast, weatherCodeText } from "./api.js";
+import { updateMap } from "./map.js";
+
+const $ = (s) => document.querySelector(s);
+
+let lastResults = [];
 
 /* Umplu dropdown-ul cu rezultatele gasite */
 function fillPick(results) {
@@ -370,19 +427,14 @@ function render(place, data) {
     `${cur.temperature_2m}${data.current_units.temperature_2m} • ` +
     `${weatherCodeText(cur.weather_code)}`;
 
-  /* update harta */
-  initMap();
-  map.setView([place.latitude, place.longitude], 11);
-  marker.setLatLng([place.latitude, place.longitude]);
-
-  marker
-    .bindPopup(
+  /* update harta */ 
+  updateMap({
+    lat: place.latitude,
+    lon: place.longitude,
+    popupHtml:
       `<b>${place.name}, ${place.country}</b><br>` +
-      `${cur.temperature_2m}${data.current_units.temperature_2m} • ${weatherCodeText(cur.weather_code)}`
-    )
-    .openPopup();
-
-  setTimeout(() => map.invalidateSize(), 0);
+      `${cur.temperature_2m}${data.current_units.temperature_2m} • ${weatherCodeText(cur.weather_code)}`,
+  });
 
   /* tabel ore */
   $("#hourRows").innerHTML = "";
@@ -407,8 +459,6 @@ function render(place, data) {
       </tr>`;
   }
 }
-
-let lastResults = [];
 
 /* Caut orasul din input */
 async function onSearch() {
@@ -440,6 +490,9 @@ async function onLoadForecast() {
   const data = await forecast(place.latitude, place.longitude);
   render(place, data);
 }
+
+// init
+initTheme();
 
 $("#searchBtn").addEventListener("click", onSearch);
 $("#loadBtn").addEventListener("click", onLoadForecast);
