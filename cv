@@ -95,34 +95,38 @@
 
 
 
-/* RESET */
+/* =========================
+   RESET
+   ========================= */
 * {
   box-sizing: border-box;
   margin: 0;
   font-family: Arial, sans-serif;
 }
 
-/* PAGE */
+/* =========================
+   PAGE (full screen)
+   ========================= */
 body {
-  background: #ffffff;        /* negru */
-  color: #e5e7eb;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
+  min-height: 100vh;
+  background: #ffffff;
+  color: #111827;
 }
 
-/* LAYOUT */
+/* =========================
+   APP LAYOUT
+   ========================= */
 .app {
-  width: 100%;
-  max-width: 1000px;
-  height: 600px;
+  width: 100vw;
+  height: 100vh;
   display: grid;
   grid-template-columns: 280px 1fr;
-  border: 1px solid #1f2a37;
-  background: #0b1117;
+  background: #ffffff;
 }
 
-/* ========== SIDEBAR ========== */
+/* =========================
+   SIDEBAR (LEFT)
+   ========================= */
 .left {
   background: #0f1720;
   padding: 12px;
@@ -140,7 +144,7 @@ body {
   color: #e5e7eb;
 }
 
-/* CONVERSATIONS */
+/* conversation items */
 .chat-item {
   padding: 10px;
   border-radius: 8px;
@@ -153,48 +157,71 @@ body {
   color: #9ca3af;
 }
 
-/* conversație activă */
 .chat-item.active {
   background: rgba(37, 99, 235, 0.25);
   border-left: 3px solid #2563eb;
 }
 
-/* ========== CHAT ========== */
+/* =========================
+   CHAT (RIGHT)
+   ========================= */
 .chat {
   display: flex;
   flex-direction: column;
   background: #0b1117;
 }
 
-/* TOP BAR */
+/* top bar */
 .top {
   padding: 12px;
   background: #111c26;
   border-bottom: 1px solid #1f2a37;
 }
 
-/* MESSAGES */
+/* status (dot + text) */
+.status {
+  font-size: 12px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+/* messages area */
 .msgs {
   flex: 1;
   padding: 14px;
   overflow-y: auto;
 }
 
+/* message bubble */
 .msg {
   max-width: 70%;
   padding: 10px 12px;
   margin-bottom: 8px;
   border-radius: 10px;
+
   background: #111c26;
+  color: #e5e7eb; /* IMPORTANT: altfel textul devine invizibil */
 }
 
-/* mesajele tale */
+/* user message */
 .msg.right {
   background: #1e40af;
+  color: #ffffff;
   margin-left: auto;
 }
 
-/* ========== INPUT BAR ========== */
+/* =========================
+   INPUT BAR
+   ========================= */
 .bar {
   display: flex;
   align-items: center;
@@ -214,27 +241,13 @@ body {
   color: #e5e7eb;
 }
 
-/* BUTOANE */
+/* buttons (general) */
 .bar button {
   padding: 0 14px;
   border: none;
   border-radius: 20px;
   background: #2563eb;
-  color: white;
+  color: #ffffff;
   cursor: pointer;
 }
 
-.status {
-  font-size: 12px;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  background: #22c55e;
-  border-radius: 50%;
-}
