@@ -1,100 +1,3 @@
-<!DOCTYPE html>
-<html lang="ro">
-<head>
-  <meta charset="UTF-8">
-  <title>AutoBazar Chat</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-<div class="app">
-
-  <!-- SIDEBAR -->
-  <aside class="left">
-    <div class="side-header">
-      <h3>AutoBazar</h3>
-      <span>inbox • mesaje</span>
-    </div>
-
-    <input class="search" placeholder="Caută conversație">
-
-    <div class="chat-item active">
-      <b>BMW 320d • Vânzător</b>
-      <span>„Mai e disponibilă?”</span>
-    </div>
-
-    <div class="chat-item">
-      <b>Golf 7 • Cumpărător</b>
-      <span>Ok, trimit poze 👍</span>
-    </div>
-  </aside>
-
-  <!-- CHAT -->
-  <main class="chat">
-
-    <header class="top">
-      <div>
-        <b>Asistent AutoBazar</b>
-        <small class="status">
-        <span class="dot"></span> activ acum
-</small>
-
-      </div>
-    </header>
-
-    <section class="msgs">
-      <div class="msg left">
-        Salut! 👋 Ce vrei să faci?
-      </div>
-
-      <div class="msg right">
-        Vreau să vând o mașină 🚗
-      </div>
-
-      <div class="msg left">
-        Perfect. Încarcă poze și adaugă prețul
-      </div>
-    </section>
-
-    <!-- INPUT BAR -->
-    <footer class="bar">
-      <button class="ico">➕</button>
-      <button class="ico">😊</button>
-
-      <input class="in" placeholder="Scrie un mesaj">
-
-      <button class="ico">🎤</button>
-      <button class="send">➤</button>
-    </footer>
-
-  </main>
-
-</div>
-
-</body>
-</html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* =========================
    RESET
    ========================= */
@@ -109,7 +12,7 @@
    ========================= */
 body {
   min-height: 100vh;
-  background: #ffffff;
+  background: #f6f7fb;
   color: #111827;
 }
 
@@ -121,67 +24,79 @@ body {
   height: 100vh;
   display: grid;
   grid-template-columns: 280px 1fr;
-  background: #ffffff;
+  background: #f6f7fb;
 }
 
 /* =========================
-   SIDEBAR (LEFT)
+   SIDEBAR (LEFT) - LIGHT
    ========================= */
 .left {
-  background: #0f1720;
+  background: #ffffff;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  border-right: 1px solid #e5e7eb;
 }
 
 .left input {
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
   outline: none;
-  background: #111c26;
-  color: #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+}
+
+.left input::placeholder {
+  color: #9ca3af;
 }
 
 /* conversation items */
 .chat-item {
-  padding: 10px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
   cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.chat-item:hover {
+  background: #f3f4f6;
 }
 
 .chat-item span {
   display: block;
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .chat-item.active {
-  background: rgba(37, 99, 235, 0.25);
-  border-left: 3px solid #2563eb;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #4f46e5;
 }
 
 /* =========================
-   CHAT (RIGHT)
+   CHAT (RIGHT) - LIGHT
    ========================= */
 .chat {
   display: flex;
   flex-direction: column;
-  background: #0b1117;
+  background: #ffffff;
 }
 
 /* top bar */
 .top {
-  padding: 12px;
-  background: #111c26;
-  border-bottom: 1px solid #1f2a37;
+  padding: 12px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 /* status (dot + text) */
 .status {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -199,6 +114,7 @@ body {
   flex: 1;
   padding: 14px;
   overflow-y: auto;
+  background: #f9fafb;
 }
 
 /* message bubble */
@@ -206,48 +122,59 @@ body {
   max-width: 70%;
   padding: 10px 12px;
   margin-bottom: 8px;
-  border-radius: 10px;
-
-  background: #111c26;
-  color: #e5e7eb; /* IMPORTANT: altfel textul devine invizibil */
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 1px rgba(16, 24, 40, 0.04);
 }
 
 /* user message */
 .msg.right {
-  background: #1e40af;
+  background: #2563eb;
   color: #ffffff;
+  border: 1px solid #2563eb;
   margin-left: auto;
+  box-shadow: 0 1px 1px rgba(37, 99, 235, 0.18);
 }
 
 /* =========================
-   INPUT BAR
+   INPUT BAR - LIGHT
    ========================= */
 .bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px;
-  border-top: 1px solid #1f2a37;
-  background: #0f1720;
+  padding: 10px 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
 }
 
 .bar input {
   flex: 1;
-  padding: 8px 12px;
-  border-radius: 20px;
-  border: none;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
   outline: none;
-  background: #111c26;
-  color: #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+}
+
+.bar input::placeholder {
+  color: #9ca3af;
 }
 
 /* buttons (general) */
 .bar button {
+  height: 38px;
   padding: 0 14px;
   border: none;
-  border-radius: 20px;
+  border-radius: 999px;
   background: #2563eb;
   color: #ffffff;
   cursor: pointer;
 }
 
+.bar button:hover {
+  background: #1d4ed8;
+}
