@@ -1,209 +1,414 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AutoBazar Chat</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="left">
+    <div class="side-header">
+      <h3>AutoBazar</h3>
+      <span>inbox • mesaje</span>
+    </div>
+
+    <input class="search" placeholder="Caută conversație" />
+
+    <!-- conversation: BMW -->
+    <div class="chat-item active" data-room="bmw-320d">
+      <b>BMW 320d • Vânzător</b>
+      <span>„Mai e disponibilă?”</span>
+    </div>
+
+    <!-- conversation: Golf -->
+    <div class="chat-item" data-room="golf-7">
+      <b>Golf 7 • Cumpărător</b>
+      <span>Ok, trimit poze 👍</span>
+    </div>
+  </aside>
+
+  <!-- CHAT -->
+  <main class="chat">
+
+    <header class="top">
+      <div>
+        <b>Asistent AutoBazar</b>
+        <small class="status">
+          <span class="dot"></span> activ acum
+        </small>
+      </div>
+    </header>
+
+    <!-- MESSAGES (JS will render here) -->
+    <section class="msgs" id="msgs">
+      <div class="msg left">Salut! 👋 Ce vrei să faci?</div>
+      <div class="msg right">Vreau să vând o mașină 🚗</div>
+      <div class="msg left">Perfect. Încarcă poze și adaugă prețul</div>
+    </section>
+
+    <!-- INPUT BAR -->
+    <footer class="bar">
+      <button class="ico" type="button" title="Atașează">➕</button>
+      <button class="ico" type="button" title="Emoji">😊</button>
+
+      <input class="in" id="messageInput" placeholder="Scrie un mesaj" />
+
+      <button class="ico" type="button" title="Voice">🎤</button>
+      <button class="send" id="sendBtn" type="button" title="Trimite">➤</button>
+    </footer>
+
+  </main>
+
+</div>
+
+<script src="client.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 (() => {
-    'use strict'
+  "use strict";
 
-    // BOILERPLATE
-    const body = document.getElementsByTagName('body')[0];
-    body.innerHTML = '';
+  class PubSub {
+    constructor() {
+      this.subscriptions = new Map();
+    }
+    subscribe(name, fn) {
+      const list = this.subscriptions.get(name) || [];
+      list.push(fn);
+      this.subscriptions.set(name, list);
 
-    const styleText = `
-    *, *:before, *:after {margin: 0; padding: 0; box-sizing: content-box}
-    body {background-color:#fafaff;}
-    #chatbar {background: #888;bottom: 0;height: 32px; position: fixed; width: 100%}
-    .chat-window {background-color: #faebd7;border: 1px solid #777;bottom: 0;height:270px;position: fixed;right: 10px; width: 280px;}
-    .chat-window .header {border-bottom: 1px solid #777;padding: 5px}
-    .chat-window span {}
-    .chat-window .header button {float: right}
-    .chat-window .footer {justify-content: space-between;align-self:stretch;border-top: 1px solid #777;bottom: 0;display: flex;height: 32px;position: absolute;width: 100%}
-    .chat-window .footer input {border: 0; flex: 1;outline: none;padding: 0 7px}
-    .chat-window .footer button {border: 0 none;padding: 0 7px}
-    .chat-window .messages {height: calc(270px - 30px - 32px);overflow: auto;padding: 0 5px;}
-    .chat-window .messages > div {border: 1px solid #aaa;border-radius: 5px;margin: 5px 0;padding: 0 5px}
-    `
-    const style = document.createElement('style');
-    style.innerText = styleText;
-    body.appendChild(style)
+      return () => {
+        const cur = this.subscriptions.get(name) || [];
+        this.subscriptions.set(name, cur.filter(x => x !== fn));
+      };
+    }
+    publish(name, data) {
+      const list = this.subscriptions.get(name);
+      if (!list) return;
+      list.forEach(fn => fn(data));
+    }
+  }
 
-    // CHAT CODE BEGIN
-    const chatbar = document.createElement('div');
-    chatbar.id = 'chatbar';
-    body.appendChild(chatbar);
-
-    class PubSub {
-        subscriptions = new Map();
-
-        subscribe(name, fn) {
-            const events = this.subscriptions.get(name);
-            if (!events) {
-                this.subscriptions.set(name, [fn]);
-                return false;
-            }
-
-            events.push(fn);
-        }
-
-        publish(name, data) {
-            const events = this.subscriptions.get(name);
-            if(!events) {
-                return false;
-            }
-
-            events.forEach(event => event.call(null, data));
-        }
+  class ServerConnection extends PubSub {
+    constructor() {
+      super();
     }
 
-    class ServerConnection extends PubSub {
-        constructor() {
-            super();
-            this.socket = new WebSocket('wss://echo.websocket.org');
-        }
-
-        listen() {
-            this.socket.addEventListener('open', this.#genericHandler.bind(this));  
-            this.socket.addEventListener('close', this.#genericHandler.bind(this));
-            this.socket.addEventListener('error', this.#genericHandler.bind(this));   
-            this.socket.addEventListener('message', this.#message.bind(this));
-        }
-
-        send(message) {
-            this.socket.send(
-                typeof message === 'object'
-                ? JSON.stringify(message)
-                : message
-            )
-        }
-
-        #genericHandler(event) {
-            console.log('ServerConnection::#genericHandler', event)
-        }
-
-        #message(event) {
-            console.log('ServerConnection::#message', event)
-            let message;
-            try {
-                message = JSON.parse(event.data);
-            } catch (error) {
-                message = {id:1, message: event.data}
-            }
-            
-            this.publish('message', message)
-        }
+    send(payload) {
+      setTimeout(() => {
+        this.publish("message", {
+          room: payload.room,
+          sender: "assistant",
+          text: "Am primit: " + payload.text,
+          ts: Date.now(),
+        });
+      }, 200);
     }
-    
-    class ChatWindow extends PubSub {
-        shellTemplate = `<div class="chat-window" id="{{id}}">
-            <div class="header"><span>{{username}}<span><button>X</button></div>
-            <div class="messages">{{messages}}</div>
-            <div class="footer">
-                <input type="text" name="message" autocomplete="off">
-                <button>Send</button>
-            </div>
-        </div>`
-        messageTemplate = `<div>{{message}}</div>`
-        messages = '';
-        #dom = null;
+  }
 
-        constructor(id, username, parent) {
-            super();
-            
-            this.id = id;
-            this.username = username;
-            this.parent = parent;
+  class ChatUI extends PubSub {
+    constructor() {
+      super();
+      this.msgs = document.getElementById("msgs");
+      this.input = document.getElementById("messageInput");
+      this.sendBtn = document.getElementById("sendBtn");
 
-            this.#build();
-        }
+      this.onSendClick = this.onSendClick.bind(this);
+      this.onKeyDown = this.onKeyDown.bind(this);
 
-        #build() {
-            const dom = document.createElement('div');
-            dom.innerHTML = this.shellTemplate
-                .replace('{{id}}', this.id)
-                .replace('{{username}}', this.username)
-                .replace('{{messages}}', this.messages);
-            
-            this.#dom = dom.firstChild;
-        }
-
-        getDom() {
-            return this.#dom;
-        }
-        handleKeypress(event) {
-            if (event.code === 'Enter') {
-                this.handleClick(event);
-            }
-        }
-        handleClick(event) {
-            const message = this.input.value;
-
-            if (!message.length) {
-                return false;
-            }
-
-            super.publish('send', {
-                id: this.id,
-                message
-            });
-
-            this.input.value = '';
-        }
-        show() {
-            this.parent.appendChild(this.#dom);
-
-            this.input = this.#dom.querySelector('input');
-            this.sendButton = this.#dom.querySelector('.footer button');
-            this.closeButton = this.#dom.querySelector('.header button');
-            this.messages = this.#dom.querySelector('.messages');
-
-            this.input.addEventListener('keypress', this.handleKeypress.bind(this), false);
-            this.sendButton.addEventListener('click', this.handleClick.bind(this), false);
-            this.closeButton.addEventListener('click', this.close.bind(this), false);
-        }
-        close() {
-            this.input.removeEventListener('keypress', this.handleKeypress.bind(this), false);
-            this.sendButton.removeEventListener('click', this.handleClick.bind(this), false);
-            this.closeButton.removeEventListener('click', this.close.bind(this), false);
-            this.parent.removeChild(this.#dom);
-        }
-        addMessage(message) {
-            const dom = this.messageTemplate
-                .replace('{{message}}', message);
-            this.messages.insertAdjacentHTML('beforeend', dom);
-            this.messages.scrollTop = this.messages.scrollHeight;
-        }
+      this.sendBtn.addEventListener("click", this.onSendClick);
+      this.input.addEventListener("keydown", this.onKeyDown);
     }
 
-    class Chat {
-        chatWindows = new Map();
-        connection = null;
-
-        constructor(id) {
-            this.chatbar = document.getElementById('chatbar');
-            this.connection = new ServerConnection();
-            this.connection.listen();
-            this.connection.subscribe('message', this.receiveMessage.bind(this));
-        }
-
-        receiveMessage(inputMessage) {
-            const {id, message} = inputMessage;
-            let chatWindow = this.chatWindows.get(id);
-
-            if (!chatWindow) {
-                chatWindow = new ChatWindow(id, 'test', this.chatbar);
-                chatWindow.show();
-                this.chatWindows.set(id, chatWindow);
-                chatWindow.subscribe('send', this.sendMessage.bind(this));
-            }
-
-            chatWindow.addMessage(message);
-        }
-
-         sendMessage(message) {
-             // todo send message
-             console.log('sending message', message);
-             this.connection.send(message);
-         }
+    onKeyDown(e) {
+      if (e.key === "Enter") this.onSendClick();
     }
-    const chat = new Chat();
-    chat.receiveMessage({
-        id: 1, message: 'test message'
-    })
-    
-})()
+
+    onSendClick() {
+      const text = this.input.value.trim();
+      if (!text) return;
+
+      this.publish("send", { text });
+      this.input.value = "";
+      this.input.focus();
+    }
+
+    clearMessages() {
+      this.msgs.innerHTML = "";
+    }
+
+    addMessage({ side, text }) {
+      const div = document.createElement("div");
+      div.className = side === "right" ? "msg right" : "msg left";
+      div.textContent = text;
+      this.msgs.appendChild(div);
+      this.msgs.scrollTop = this.msgs.scrollHeight;
+    }
+  }
+
+  class ChatApp {
+    constructor() {
+      this.connection = new ServerConnection();
+      this.ui = new ChatUI();
+
+      this.room = this.getActiveRoom();
+
+      this.ui.subscribe("send", ({ text }) => {
+
+        this.ui.addMessage({ side: "right", text });
+
+        this.connection.send({ room: this.room, sender: "user", text });
+      });
+
+      this.connection.subscribe("message", (msg) => {
+        if (msg.room !== this.room) return;
+        this.ui.addMessage({ side: "left", text: msg.text });
+      });
+
+      document.querySelectorAll(".chat-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          document.querySelectorAll(".chat-item").forEach(x => x.classList.remove("active"));
+          item.classList.add("active");
+
+          this.room = item.dataset.room;
+          this.ui.clearMessages();
+
+          this.ui.addMessage({ side: "left", text: `Ai deschis conversația: ${this.room}` });
+        });
+      });
+    }
+
+    getActiveRoom() {
+      const active = document.querySelector(".chat-item.active");
+      return active?.dataset.room || "bmw-320d";
+    }
+  }
+
+  new ChatApp();
+})();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================
+   RESET
+   ========================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+/* =========================
+   PAGE (full screen)
+   ========================= */
+body {
+  min-height: 100vh;
+  background: #f6f7fb;
+  color: #111827;
+}
+
+/* =========================
+   APP LAYOUT
+   ========================= */
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  background: #f6f7fb;
+}
+
+/* =========================
+   SIDEBAR (LEFT) - LIGHT
+   ========================= */
+.left {
+  background: #ffffff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-right: 1px solid #e5e7eb;
+}
+
+.left input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  outline: none;
+  background: #f9fafb;
+  color: #111827;
+}
+
+.left input::placeholder {
+  color: #9ca3af;
+}
+
+/* conversation items */
+.chat-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.chat-item:hover {
+  background: #f3f4f6;
+}
+
+.chat-item span {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.chat-item.active {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #4f46e5;
+}
+
+/* =========================
+   CHAT (RIGHT) - LIGHT
+   ========================= */
+.chat {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+/* top bar */
+.top {
+  padding: 12px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* status (dot + text) */
+.status {
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+/* messages area */
+.msgs {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+  background: #f9fafb;
+}
+
+/* message bubble */
+.msg {
+  max-width: 70%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 1px rgba(16, 24, 40, 0.04);
+}
+
+/* user message */
+.msg.right {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+  margin-left: auto;
+  box-shadow: 0 1px 1px rgba(37, 99, 235, 0.18);
+}
+
+/* =========================
+   INPUT BAR - LIGHT
+   ========================= */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.bar input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  outline: none;
+  background: #f9fafb;
+  color: #111827;
+}
+
+.bar input::placeholder {
+  color: #9ca3af;
+}
+
+/* buttons (general) */
+.bar button {
+  height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.bar button:hover {
+  background: #1d4ed8;
+}
