@@ -1,180 +1,209 @@
-/* =========================
-   RESET
-   ========================= */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
+(() => {
+    'use strict'
 
-/* =========================
-   PAGE (full screen)
-   ========================= */
-body {
-  min-height: 100vh;
-  background: #f6f7fb;
-  color: #111827;
-}
+    // BOILERPLATE
+    const body = document.getElementsByTagName('body')[0];
+    body.innerHTML = '';
 
-/* =========================
-   APP LAYOUT
-   ========================= */
-.app {
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  background: #f6f7fb;
-}
+    const styleText = `
+    *, *:before, *:after {margin: 0; padding: 0; box-sizing: content-box}
+    body {background-color:#fafaff;}
+    #chatbar {background: #888;bottom: 0;height: 32px; position: fixed; width: 100%}
+    .chat-window {background-color: #faebd7;border: 1px solid #777;bottom: 0;height:270px;position: fixed;right: 10px; width: 280px;}
+    .chat-window .header {border-bottom: 1px solid #777;padding: 5px}
+    .chat-window span {}
+    .chat-window .header button {float: right}
+    .chat-window .footer {justify-content: space-between;align-self:stretch;border-top: 1px solid #777;bottom: 0;display: flex;height: 32px;position: absolute;width: 100%}
+    .chat-window .footer input {border: 0; flex: 1;outline: none;padding: 0 7px}
+    .chat-window .footer button {border: 0 none;padding: 0 7px}
+    .chat-window .messages {height: calc(270px - 30px - 32px);overflow: auto;padding: 0 5px;}
+    .chat-window .messages > div {border: 1px solid #aaa;border-radius: 5px;margin: 5px 0;padding: 0 5px}
+    `
+    const style = document.createElement('style');
+    style.innerText = styleText;
+    body.appendChild(style)
 
-/* =========================
-   SIDEBAR (LEFT) - LIGHT
-   ========================= */
-.left {
-  background: #ffffff;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  border-right: 1px solid #e5e7eb;
-}
+    // CHAT CODE BEGIN
+    const chatbar = document.createElement('div');
+    chatbar.id = 'chatbar';
+    body.appendChild(chatbar);
 
-.left input {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  outline: none;
-  background: #f9fafb;
-  color: #111827;
-}
+    class PubSub {
+        subscriptions = new Map();
 
-.left input::placeholder {
-  color: #9ca3af;
-}
+        subscribe(name, fn) {
+            const events = this.subscriptions.get(name);
+            if (!events) {
+                this.subscriptions.set(name, [fn]);
+                return false;
+            }
 
-/* conversation items */
-.chat-item {
-  padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
-}
+            events.push(fn);
+        }
 
-.chat-item:hover {
-  background: #f3f4f6;
-}
+        publish(name, data) {
+            const events = this.subscriptions.get(name);
+            if(!events) {
+                return false;
+            }
 
-.chat-item span {
-  display: block;
-  font-size: 12px;
-  color: #6b7280;
-}
+            events.forEach(event => event.call(null, data));
+        }
+    }
 
-.chat-item.active {
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
-  border-left: 4px solid #4f46e5;
-}
+    class ServerConnection extends PubSub {
+        constructor() {
+            super();
+            this.socket = new WebSocket('wss://echo.websocket.org');
+        }
 
-/* =========================
-   CHAT (RIGHT) - LIGHT
-   ========================= */
-.chat {
-  display: flex;
-  flex-direction: column;
-  background: #ffffff;
-}
+        listen() {
+            this.socket.addEventListener('open', this.#genericHandler.bind(this));  
+            this.socket.addEventListener('close', this.#genericHandler.bind(this));
+            this.socket.addEventListener('error', this.#genericHandler.bind(this));   
+            this.socket.addEventListener('message', this.#message.bind(this));
+        }
 
-/* top bar */
-.top {
-  padding: 12px 14px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-}
+        send(message) {
+            this.socket.send(
+                typeof message === 'object'
+                ? JSON.stringify(message)
+                : message
+            )
+        }
 
-/* status (dot + text) */
-.status {
-  font-size: 12px;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+        #genericHandler(event) {
+            console.log('ServerConnection::#genericHandler', event)
+        }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #22c55e;
-}
+        #message(event) {
+            console.log('ServerConnection::#message', event)
+            let message;
+            try {
+                message = JSON.parse(event.data);
+            } catch (error) {
+                message = {id:1, message: event.data}
+            }
+            
+            this.publish('message', message)
+        }
+    }
+    
+    class ChatWindow extends PubSub {
+        shellTemplate = `<div class="chat-window" id="{{id}}">
+            <div class="header"><span>{{username}}<span><button>X</button></div>
+            <div class="messages">{{messages}}</div>
+            <div class="footer">
+                <input type="text" name="message" autocomplete="off">
+                <button>Send</button>
+            </div>
+        </div>`
+        messageTemplate = `<div>{{message}}</div>`
+        messages = '';
+        #dom = null;
 
-/* messages area */
-.msgs {
-  flex: 1;
-  padding: 14px;
-  overflow-y: auto;
-  background: #f9fafb;
-}
+        constructor(id, username, parent) {
+            super();
+            
+            this.id = id;
+            this.username = username;
+            this.parent = parent;
 
-/* message bubble */
-.msg {
-  max-width: 70%;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 1px rgba(16, 24, 40, 0.04);
-}
+            this.#build();
+        }
 
-/* user message */
-.msg.right {
-  background: #2563eb;
-  color: #ffffff;
-  border: 1px solid #2563eb;
-  margin-left: auto;
-  box-shadow: 0 1px 1px rgba(37, 99, 235, 0.18);
-}
+        #build() {
+            const dom = document.createElement('div');
+            dom.innerHTML = this.shellTemplate
+                .replace('{{id}}', this.id)
+                .replace('{{username}}', this.username)
+                .replace('{{messages}}', this.messages);
+            
+            this.#dom = dom.firstChild;
+        }
 
-/* =========================
-   INPUT BAR - LIGHT
-   ========================= */
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid #e5e7eb;
-  background: #ffffff;
-}
+        getDom() {
+            return this.#dom;
+        }
+        handleKeypress(event) {
+            if (event.code === 'Enter') {
+                this.handleClick(event);
+            }
+        }
+        handleClick(event) {
+            const message = this.input.value;
 
-.bar input {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  outline: none;
-  background: #f9fafb;
-  color: #111827;
-}
+            if (!message.length) {
+                return false;
+            }
 
-.bar input::placeholder {
-  color: #9ca3af;
-}
+            super.publish('send', {
+                id: this.id,
+                message
+            });
 
-/* buttons (general) */
-.bar button {
-  height: 38px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 999px;
-  background: #2563eb;
-  color: #ffffff;
-  cursor: pointer;
-}
+            this.input.value = '';
+        }
+        show() {
+            this.parent.appendChild(this.#dom);
 
-.bar button:hover {
-  background: #1d4ed8;
-}
+            this.input = this.#dom.querySelector('input');
+            this.sendButton = this.#dom.querySelector('.footer button');
+            this.closeButton = this.#dom.querySelector('.header button');
+            this.messages = this.#dom.querySelector('.messages');
+
+            this.input.addEventListener('keypress', this.handleKeypress.bind(this), false);
+            this.sendButton.addEventListener('click', this.handleClick.bind(this), false);
+            this.closeButton.addEventListener('click', this.close.bind(this), false);
+        }
+        close() {
+            this.input.removeEventListener('keypress', this.handleKeypress.bind(this), false);
+            this.sendButton.removeEventListener('click', this.handleClick.bind(this), false);
+            this.closeButton.removeEventListener('click', this.close.bind(this), false);
+            this.parent.removeChild(this.#dom);
+        }
+        addMessage(message) {
+            const dom = this.messageTemplate
+                .replace('{{message}}', message);
+            this.messages.insertAdjacentHTML('beforeend', dom);
+            this.messages.scrollTop = this.messages.scrollHeight;
+        }
+    }
+
+    class Chat {
+        chatWindows = new Map();
+        connection = null;
+
+        constructor(id) {
+            this.chatbar = document.getElementById('chatbar');
+            this.connection = new ServerConnection();
+            this.connection.listen();
+            this.connection.subscribe('message', this.receiveMessage.bind(this));
+        }
+
+        receiveMessage(inputMessage) {
+            const {id, message} = inputMessage;
+            let chatWindow = this.chatWindows.get(id);
+
+            if (!chatWindow) {
+                chatWindow = new ChatWindow(id, 'test', this.chatbar);
+                chatWindow.show();
+                this.chatWindows.set(id, chatWindow);
+                chatWindow.subscribe('send', this.sendMessage.bind(this));
+            }
+
+            chatWindow.addMessage(message);
+        }
+
+         sendMessage(message) {
+             // todo send message
+             console.log('sending message', message);
+             this.connection.send(message);
+         }
+    }
+    const chat = new Chat();
+    chat.receiveMessage({
+        id: 1, message: 'test message'
+    })
+    
+})()
