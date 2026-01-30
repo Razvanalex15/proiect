@@ -17,16 +17,16 @@
       <span>inbox • mesaje</span>
     </div>
 
-    <input class="search" placeholder="Caută conversație" />
+    <input class="search" type="search" placeholder="Caută conversație" />
 
     <!-- conversation: BMW -->
-    <div class="chat-item active" data-room="bmw-320d">
+    <div class="chat-item active" data-room="bmw-320d" role="button" tabindex="0">
       <b>BMW 320d • Vânzător</b>
       <span>„Mai e disponibilă?”</span>
     </div>
 
     <!-- conversation: Golf -->
-    <div class="chat-item" data-room="golf-7">
+    <div class="chat-item" data-room="golf-7" role="button" tabindex="0">
       <b>Golf 7 • Cumpărător</b>
       <span>Ok, trimit poze 👍</span>
     </div>
@@ -44,31 +44,42 @@
       </div>
     </header>
 
-    <!-- MESSAGES (JS will render here) -->
-    <section class="msgs" id="msgs">
-      <div class="msg left">Salut! 👋 Ce vrei să faci?</div>
-      <div class="msg right">Vreau să vând o mașină 🚗</div>
-      <div class="msg left">Perfect. Încarcă poze și adaugă prețul</div>
+    <!-- MESSAGES (JS renders here) -->
+    <section class="msgs" id="msgs" aria-label="Mesaje">
+      <!-- Lasă gol. JS va popula mesajele. -->
     </section>
 
     <!-- INPUT BAR -->
     <footer class="bar">
-      <button class="ico" type="button" title="Atașează">➕</button>
-      <button class="ico" type="button" title="Emoji">😊</button>
+      <button class="ico" type="button" title="Atașează" aria-label="Atașează">➕</button>
+      <button class="ico" type="button" title="Emoji" aria-label="Emoji">😊</button>
 
-      <input class="in" id="messageInput" placeholder="Scrie un mesaj" />
+      <input
+        class="in"
+        id="messageInput"
+        type="text"
+        placeholder="Scrie un mesaj"
+        autocomplete="off"
+        aria-label="Mesaj"
+      />
 
-      <button class="ico" type="button" title="Voice">🎤</button>
-      <button class="send" id="sendBtn" type="button" title="Trimite">➤</button>
+      <button class="ico" type="button" title="Voice" aria-label="Voice">🎤</button>
+      <button class="send" id="sendBtn" type="button" title="Trimite" aria-label="Trimite">➤</button>
     </footer>
 
   </main>
 
 </div>
 
+<!-- Socket.IO client (required for realtime). Keep before client.js -->
+<script src="http://localhost:3000/socket.io/socket.io.js"></script>
 <script src="client.js"></script>
 </body>
 </html>
+
+
+
+
 
 
 
@@ -95,6 +106,7 @@
     constructor() {
       this.subscriptions = new Map();
     }
+
     subscribe(name, fn) {
       const list = this.subscriptions.get(name) || [];
       list.push(fn);
@@ -102,39 +114,83 @@
 
       return () => {
         const cur = this.subscriptions.get(name) || [];
-        this.subscriptions.set(name, cur.filter(x => x !== fn));
+        this.subscriptions.set(name, cur.filter((x) => x !== fn));
       };
     }
+
     publish(name, data) {
       const list = this.subscriptions.get(name);
       if (!list) return;
-      list.forEach(fn => fn(data));
+      list.forEach((fn) => fn(data));
     }
   }
 
   class ServerConnection extends PubSub {
-    constructor() {
+    constructor({ url, room, userId }) {
       super();
+      this.url = url;
+      this.room = room;
+      this.userId = userId;
+
+      if (typeof io === "undefined") {
+        throw new Error(
+          'Socket.IO client not found. Add: <script src="http://localhost:3000/socket.io/socket.io.js"></script> before client.js'
+        );
+      }
+
+      this.socket = io(this.url);
+
+      this.socket.on("connect", () => {
+        this.publish("status", { type: "connected", id: this.socket.id });
+        this.joinRoom(this.room);
+      });
+
+      this.socket.on("disconnect", () => {
+        this.publish("status", { type: "disconnected" });
+      });
+
+      this.socket.on("chat:message", (msg) => {
+        this.publish("message", msg);
+      });
+
+      this.socket.on("chat:system", (msg) => {
+        this.publish("system", msg);
+      });
     }
 
-    send(payload) {
-      setTimeout(() => {
-        this.publish("message", {
-          room: payload.room,
-          sender: "assistant",
-          text: "Am primit: " + payload.text,
-          ts: Date.now(),
-        });
-      }, 200);
+    joinRoom(room) {
+      this.room = room;
+      this.socket.emit("chat:join", { room, userId: this.userId });
+    }
+
+    leaveRoom(room) {
+      this.socket.emit("chat:leave", { room, userId: this.userId });
+    }
+
+    send(text) {
+      const msg = {
+        room: this.room,
+        userId: this.userId,
+        text,
+        ts: Date.now(),
+      };
+      this.socket.emit("chat:message", msg);
     }
   }
 
   class ChatUI extends PubSub {
     constructor() {
       super();
+
       this.msgs = document.getElementById("msgs");
       this.input = document.getElementById("messageInput");
       this.sendBtn = document.getElementById("sendBtn");
+
+      if (!this.msgs || !this.input || !this.sendBtn) {
+        throw new Error(
+          "Missing DOM elements. Ensure you have: <section id='msgs'>, <input id='messageInput'>, <button id='sendBtn'>"
+        );
+      }
 
       this.onSendClick = this.onSendClick.bind(this);
       this.onKeyDown = this.onKeyDown.bind(this);
@@ -152,6 +208,7 @@
       if (!text) return;
 
       this.publish("send", { text });
+
       this.input.value = "";
       this.input.focus();
     }
@@ -171,39 +228,99 @@
 
   class ChatApp {
     constructor() {
-      this.connection = new ServerConnection();
       this.ui = new ChatUI();
+
+      this.userId = this.getOrAskUserId();
 
       this.room = this.getActiveRoom();
 
+      this.connection = new ServerConnection({
+        url: "http://localhost:3000",
+        room: this.room,
+        userId: this.userId,
+      });
+
+      this.store = new Map();
+
       this.ui.subscribe("send", ({ text }) => {
 
-        this.ui.addMessage({ side: "right", text });
-
-        this.connection.send({ room: this.room, sender: "user", text });
+        this.connection.send(text);
       });
 
       this.connection.subscribe("message", (msg) => {
+        this.saveMessage(msg.room, msg);
+
+        if (msg.room !== this.room) {
+          return;
+        }
+
+        const side = msg.userId === this.userId ? "right" : "left";
+        this.ui.addMessage({ side, text: msg.text });
+      });
+
+      this.connection.subscribe("system", (msg) => {
         if (msg.room !== this.room) return;
-        this.ui.addMessage({ side: "left", text: msg.text });
+        this.ui.addMessage({ side: "left", text: `ℹ️ ${msg.text}` });
       });
 
       document.querySelectorAll(".chat-item").forEach((item) => {
         item.addEventListener("click", () => {
-          document.querySelectorAll(".chat-item").forEach(x => x.classList.remove("active"));
+          const newRoom = item.dataset.room;
+          if (!newRoom || newRoom === this.room) return;
+
+          document
+            .querySelectorAll(".chat-item")
+            .forEach((x) => x.classList.remove("active"));
           item.classList.add("active");
 
-          this.room = item.dataset.room;
-          this.ui.clearMessages();
+          this.connection.leaveRoom(this.room);
+          this.room = newRoom;
+          this.connection.joinRoom(this.room);
 
-          this.ui.addMessage({ side: "left", text: `Ai deschis conversația: ${this.room}` });
+          this.renderRoom(this.room);
         });
       });
+
+      this.renderRoom(this.room);
+
+      if ((this.store.get(this.room) || []).length === 0) {
+        this.ui.addMessage({
+          side: "left",
+          text: "Salut! 👋 Scrie un mesaj ca să începi conversația.",
+        });
+      }
     }
 
     getActiveRoom() {
       const active = document.querySelector(".chat-item.active");
       return active?.dataset.room || "bmw-320d";
+    }
+
+    getOrAskUserId() {
+      const key = "autobazar_userId";
+      let id = localStorage.getItem(key);
+
+      if (!id) {
+        id = prompt("User ID? (ex: user1, user2)") || "user";
+        id = id.trim() || "user";
+        localStorage.setItem(key, id);
+      }
+
+      return id;
+    }
+
+    saveMessage(room, msg) {
+      if (!this.store.has(room)) this.store.set(room, []);
+      this.store.get(room).push(msg);
+    }
+
+    renderRoom(room) {
+      this.ui.clearMessages();
+      const msgs = this.store.get(room) || [];
+      msgs.forEach((m) => {
+        const side = m.userId === this.userId ? "right" : "left";
+        this.ui.addMessage({ side, text: m.text });
+      });
     }
   }
 
@@ -230,185 +347,33 @@
 
 
 
+const http = require("http");
+const { Server } = require("socket.io");
 
+const server = http.createServer();
 
-/* =========================
-   RESET
-   ========================= */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
+const io = new Server(server, {
+  cors: { origin: "*" }, // Live Server
+});
 
-/* =========================
-   PAGE (full screen)
-   ========================= */
-body {
-  min-height: 100vh;
-  background: #f6f7fb;
-  color: #111827;
-}
+io.on("connection", (socket) => {
+  console.log("connected", socket.id);
 
-/* =========================
-   APP LAYOUT
-   ========================= */
-.app {
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  background: #f6f7fb;
-}
+  socket.on("chat:join", ({ room, userId }) => {
+    socket.join(room);
+    console.log(`${userId} joined ${room}`);
+  });
 
-/* =========================
-   SIDEBAR (LEFT) - LIGHT
-   ========================= */
-.left {
-  background: #ffffff;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  border-right: 1px solid #e5e7eb;
-}
+  socket.on("chat:message", (msg) => {
+    // IMPORTANT: trimite la TOTI din room, inclusiv la cel care a trimis
+    io.to(msg.room).emit("chat:message", msg);
+  });
 
-.left input {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  outline: none;
-  background: #f9fafb;
-  color: #111827;
-}
+  socket.on("disconnect", () => {
+    console.log("disconnected", socket.id);
+  });
+});
 
-.left input::placeholder {
-  color: #9ca3af;
-}
-
-/* conversation items */
-.chat-item {
-  padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
-}
-
-.chat-item:hover {
-  background: #f3f4f6;
-}
-
-.chat-item span {
-  display: block;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.chat-item.active {
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
-  border-left: 4px solid #4f46e5;
-}
-
-/* =========================
-   CHAT (RIGHT) - LIGHT
-   ========================= */
-.chat {
-  display: flex;
-  flex-direction: column;
-  background: #ffffff;
-}
-
-/* top bar */
-.top {
-  padding: 12px 14px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* status (dot + text) */
-.status {
-  font-size: 12px;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #22c55e;
-}
-
-/* messages area */
-.msgs {
-  flex: 1;
-  padding: 14px;
-  overflow-y: auto;
-  background: #f9fafb;
-}
-
-/* message bubble */
-.msg {
-  max-width: 70%;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 1px rgba(16, 24, 40, 0.04);
-}
-
-/* user message */
-.msg.right {
-  background: #2563eb;
-  color: #ffffff;
-  border: 1px solid #2563eb;
-  margin-left: auto;
-  box-shadow: 0 1px 1px rgba(37, 99, 235, 0.18);
-}
-
-/* =========================
-   INPUT BAR - LIGHT
-   ========================= */
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid #e5e7eb;
-  background: #ffffff;
-}
-
-.bar input {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  outline: none;
-  background: #f9fafb;
-  color: #111827;
-}
-
-.bar input::placeholder {
-  color: #9ca3af;
-}
-
-/* buttons (general) */
-.bar button {
-  height: 38px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 999px;
-  background: #2563eb;
-  color: #ffffff;
-  cursor: pointer;
-}
-
-.bar button:hover {
-  background: #1d4ed8;
-}
+server.listen(3000, () => {
+  console.log("Socket.IO server running on http://localhost:3000");
+});
