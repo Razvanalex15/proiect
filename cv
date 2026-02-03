@@ -1,79 +1,43 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AutoBazar Chat</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Canvas Simple</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<div class="app">
+  <div class="toolbar">
+    <label>
+      Shape
+      <select id="shape">
+        <option value="circle">Circle</option>
+        <option value="rect">Rectangle</option>
+      </select>
+    </label>
 
-  <!-- SIDEBAR -->
-  <aside class="left">
-    <div class="side-header">
-      <h3>AutoBazar</h3>
-      <span>inbox • mesaje</span>
-    </div>
+    <label>
+      Size
+      <input type="range" id="size" min="10" max="80" value="30" />
+      <span id="sizeVal">30</span>
+    </label>
 
-    <input class="search" type="search" placeholder="Caută conversație" />
+    <label>
+      Color
+      <input type="color" id="color" value="#2563eb" />
+    </label>
 
-    <!-- conversation: BMW -->
-    <div class="chat-item active" data-room="bmw-320d" role="button" tabindex="0">
-      <b>BMW 320d • Vânzător</b>
-      <span>„Mai e disponibilă?”</span>
-    </div>
+    <button id="clearBtn">Clear</button>
+  </div>
 
-    <!-- conversation: Golf -->
-    <div class="chat-item" data-room="golf-7" role="button" tabindex="0">
-      <b>Golf 7 • Cumpărător</b>
-      <span>Ok, trimit poze 👍</span>
-    </div>
-  </aside>
+  <div class="canvas-wrapper">
+    <canvas id="canvas"></canvas>
 
-  <!-- CHAT -->
-  <main class="chat">
+    <div class="window-state" id="windowState"></div>
+  </div>
 
-    <header class="top">
-      <div>
-        <b>Asistent AutoBazar</b>
-        <small class="status">
-          <span class="dot"></span> activ acum
-        </small>
-      </div>
-    </header>
-
-    <!-- MESSAGES (JS renders here) -->
-    <section class="msgs" id="msgs" aria-label="Mesaje">
-      <!-- Lasă gol. JS va popula mesajele. -->
-    </section>
-
-    <!-- INPUT BAR -->
-    <footer class="bar">
-      <button class="ico" type="button" title="Atașează" aria-label="Atașează">➕</button>
-      <button class="ico" type="button" title="Emoji" aria-label="Emoji">😊</button>
-
-      <input
-        class="in"
-        id="messageInput"
-        type="text"
-        placeholder="Scrie un mesaj"
-        autocomplete="off"
-        aria-label="Mesaj"
-      />
-
-      <button class="ico" type="button" title="Voice" aria-label="Voice">🎤</button>
-      <button class="send" id="sendBtn" type="button" title="Trimite" aria-label="Trimite">➤</button>
-    </footer>
-
-  </main>
-
-</div>
-
-<!-- Socket.IO client (required for realtime). Keep before client.js -->
-<script src="http://localhost:3000/socket.io/socket.io.js"></script>
-<script src="client.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
 
@@ -97,283 +61,172 @@
 
 
 
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  background: #ffffff;
+  color: #111;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #ddd;
+  background: #f7f7f7;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+input[type="range"] {
+  width: 100px;
+}
+
+button {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  background: #2563eb;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1e4fd6;
+}
+
+.canvas-wrapper {
+  position: relative;
+  height: calc(100vh - 52px);
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: white;
+}
+
+.window-state {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  background: white;
+}
 
 
-(() => {
-  "use strict";
 
-  class PubSub {
-    constructor() {
-      this.subscriptions = new Map();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const shapeSelect = document.getElementById("shape");
+const sizeInput = document.getElementById("size");
+const sizeVal = document.getElementById("sizeVal");
+const colorInput = document.getElementById("color");
+const clearBtn = document.getElementById("clearBtn");
+const windowState = document.getElementById("windowState");
+
+const objects = [];
+
+function resizeCanvas() {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  draw();
+  updateWindowState();
+}
+
+function updateWindowState() {
+  windowState.innerHTML =
+    `scroll: (${window.scrollX}, ${window.scrollY})<br>` +
+    `viewport: ${window.innerWidth} × ${window.innerHeight}<br>` +
+    `canvas: ${canvas.width} × ${canvas.height}<br>` +
+    `objects: ${objects.length}`;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  objects.forEach(o => {
+    ctx.fillStyle = o.color;
+    ctx.strokeStyle = "#111";
+
+    if (o.shape === "circle") {
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, o.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      const w = o.size * 2;
+      const h = o.size * 2;
+      ctx.fillRect(o.x - w / 2, o.y - h / 2, w, h);
+      ctx.strokeRect(o.x - w / 2, o.y - h / 2, w, h);
     }
-
-    subscribe(name, fn) {
-      const list = this.subscriptions.get(name) || [];
-      list.push(fn);
-      this.subscriptions.set(name, list);
-
-      return () => {
-        const cur = this.subscriptions.get(name) || [];
-        this.subscriptions.set(name, cur.filter((x) => x !== fn));
-      };
-    }
-
-    publish(name, data) {
-      const list = this.subscriptions.get(name);
-      if (!list) return;
-      list.forEach((fn) => fn(data));
-    }
-  }
-
-  class ServerConnection extends PubSub {
-    constructor({ url, room, userId }) {
-      super();
-      this.url = url;
-      this.room = room;
-      this.userId = userId;
-
-      if (typeof io === "undefined") {
-        throw new Error(
-          'Socket.IO client not found. Add: <script src="http://localhost:3000/socket.io/socket.io.js"></script> before client.js'
-        );
-      }
-
-      this.socket = io(this.url);
-
-      this.socket.on("connect", () => {
-        this.publish("status", { type: "connected", id: this.socket.id });
-        this.joinRoom(this.room);
-      });
-
-      this.socket.on("disconnect", () => {
-        this.publish("status", { type: "disconnected" });
-      });
-
-      this.socket.on("chat:message", (msg) => {
-        this.publish("message", msg);
-      });
-
-      this.socket.on("chat:system", (msg) => {
-        this.publish("system", msg);
-      });
-    }
-
-    joinRoom(room) {
-      this.room = room;
-      this.socket.emit("chat:join", { room, userId: this.userId });
-    }
-
-    leaveRoom(room) {
-      this.socket.emit("chat:leave", { room, userId: this.userId });
-    }
-
-    send(text) {
-      const msg = {
-        room: this.room,
-        userId: this.userId,
-        text,
-        ts: Date.now(),
-      };
-      this.socket.emit("chat:message", msg);
-    }
-  }
-
-  class ChatUI extends PubSub {
-    constructor() {
-      super();
-
-      this.msgs = document.getElementById("msgs");
-      this.input = document.getElementById("messageInput");
-      this.sendBtn = document.getElementById("sendBtn");
-
-      if (!this.msgs || !this.input || !this.sendBtn) {
-        throw new Error(
-          "Missing DOM elements. Ensure you have: <section id='msgs'>, <input id='messageInput'>, <button id='sendBtn'>"
-        );
-      }
-
-      this.onSendClick = this.onSendClick.bind(this);
-      this.onKeyDown = this.onKeyDown.bind(this);
-
-      this.sendBtn.addEventListener("click", this.onSendClick);
-      this.input.addEventListener("keydown", this.onKeyDown);
-    }
-
-    onKeyDown(e) {
-      if (e.key === "Enter") this.onSendClick();
-    }
-
-    onSendClick() {
-      const text = this.input.value.trim();
-      if (!text) return;
-
-      this.publish("send", { text });
-
-      this.input.value = "";
-      this.input.focus();
-    }
-
-    clearMessages() {
-      this.msgs.innerHTML = "";
-    }
-
-    addMessage({ side, text }) {
-      const div = document.createElement("div");
-      div.className = side === "right" ? "msg right" : "msg left";
-      div.textContent = text;
-      this.msgs.appendChild(div);
-      this.msgs.scrollTop = this.msgs.scrollHeight;
-    }
-  }
-
-  class ChatApp {
-    constructor() {
-      this.ui = new ChatUI();
-
-      this.userId = this.getOrAskUserId();
-
-      this.room = this.getActiveRoom();
-
-      this.connection = new ServerConnection({
-        url: "http://localhost:3000",
-        room: this.room,
-        userId: this.userId,
-      });
-
-      this.store = new Map();
-
-      this.ui.subscribe("send", ({ text }) => {
-
-        this.connection.send(text);
-      });
-
-      this.connection.subscribe("message", (msg) => {
-        this.saveMessage(msg.room, msg);
-
-        if (msg.room !== this.room) {
-          return;
-        }
-
-        const side = msg.userId === this.userId ? "right" : "left";
-        this.ui.addMessage({ side, text: msg.text });
-      });
-
-      this.connection.subscribe("system", (msg) => {
-        if (msg.room !== this.room) return;
-        this.ui.addMessage({ side: "left", text: `ℹ️ ${msg.text}` });
-      });
-
-      document.querySelectorAll(".chat-item").forEach((item) => {
-        item.addEventListener("click", () => {
-          const newRoom = item.dataset.room;
-          if (!newRoom || newRoom === this.room) return;
-
-          document
-            .querySelectorAll(".chat-item")
-            .forEach((x) => x.classList.remove("active"));
-          item.classList.add("active");
-
-          this.connection.leaveRoom(this.room);
-          this.room = newRoom;
-          this.connection.joinRoom(this.room);
-
-          this.renderRoom(this.room);
-        });
-      });
-
-      this.renderRoom(this.room);
-
-      if ((this.store.get(this.room) || []).length === 0) {
-        this.ui.addMessage({
-          side: "left",
-          text: "Salut! 👋 Scrie un mesaj ca să începi conversația.",
-        });
-      }
-    }
-
-    getActiveRoom() {
-      const active = document.querySelector(".chat-item.active");
-      return active?.dataset.room || "bmw-320d";
-    }
-
-    getOrAskUserId() {
-      const key = "autobazar_userId";
-      let id = localStorage.getItem(key);
-
-      if (!id) {
-        id = prompt("User ID? (ex: user1, user2)") || "user";
-        id = id.trim() || "user";
-        localStorage.setItem(key, id);
-      }
-
-      return id;
-    }
-
-    saveMessage(room, msg) {
-      if (!this.store.has(room)) this.store.set(room, []);
-      this.store.get(room).push(msg);
-    }
-
-    renderRoom(room) {
-      this.ui.clearMessages();
-      const msgs = this.store.get(room) || [];
-      msgs.forEach((m) => {
-        const side = m.userId === this.userId ? "right" : "left";
-        this.ui.addMessage({ side, text: m.text });
-      });
-    }
-  }
-
-  new ChatApp();
-})();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-const http = require("http");
-const { Server } = require("socket.io");
-
-const server = http.createServer();
-
-const io = new Server(server, {
-  cors: { origin: "*" }, // Live Server
-});
-
-io.on("connection", (socket) => {
-  console.log("connected", socket.id);
-
-  socket.on("chat:join", ({ room, userId }) => {
-    socket.join(room);
-    console.log(`${userId} joined ${room}`);
+  });
+}
+
+canvas.addEventListener("click", (event) => {
+  const rect = canvas.getBoundingClientRect();
+
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  objects.push({
+    shape: shapeSelect.value,
+    x,
+    y,
+    size: Number(sizeInput.value),
+    color: colorInput.value
   });
 
-  socket.on("chat:message", (msg) => {
-    // IMPORTANT: trimite la TOTI din room, inclusiv la cel care a trimis
-    io.to(msg.room).emit("chat:message", msg);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("disconnected", socket.id);
-  });
+  draw();
+  updateWindowState();
 });
 
-server.listen(3000, () => {
-  console.log("Socket.IO server running on http://localhost:3000");
+sizeInput.addEventListener("input", () => {
+  sizeVal.textContent = sizeInput.value;
 });
+
+clearBtn.addEventListener("click", () => {
+  objects.length = 0;
+  draw();
+  updateWindowState();
+});
+
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("scroll", updateWindowState);
+
+sizeVal.textContent = sizeInput.value;
+resizeCanvas();
