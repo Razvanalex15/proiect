@@ -1,232 +1,127 @@
-<!doctype html>
-<html lang="ro">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Canvas Simple</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
+// exercise.ts
 
-  <div class="toolbar">
-    <label>
-      Shape
-      <select id="shape">
-        <option value="circle">Circle</option>
-        <option value="rect">Rectangle</option>
-      </select>
-    </label>
+// Starter types (do not change)
+type Role = "intern" | "mentor" | "admin";
 
-    <label>
-      Size
-      <input type="range" id="size" min="10" max="80" value="30" />
-      <span id="sizeVal">30</span>
-    </label>
+export type User = {
+  id: string;
+  email: string;
+  role: Role;
+};
 
-    <label>
-      Color
-      <input type="color" id="color" value="#2563eb" />
-    </label>
+export type Result<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string };
 
-    <button id="clearBtn">Clear</button>
-  </div>
+// [1] Implement
+export function parseUserConfig(input: string): Result<User> {
+  let data: unknown;
 
-  <div class="canvas-wrapper">
-    <canvas id="canvas"></canvas>
+  // Checks whether the input is valid JSON
+  try {
+    data = JSON.parse(input);
+  } catch {
+    return { ok: false, error: "Invalid JSON" };
+  }
 
-    <div class="window-state" id="windowState"></div>
-  </div>
+  // Checks that the parsed JSON is an object
+  if (typeof data !== "object" || data === null) {
+    return { ok: false, error: "Invalid User shape" };
+  }
 
-  <script src="script.js"></script>
-</body>
-</html>
+  // Missing fields
+  if (!("id" in data)) return { ok: false, error: "Missing field: id" };
+  if (!("email" in data)) return { ok: false, error: "Missing field: email" };
+  if (!("role" in data)) return { ok: false, error: "Missing field: role" };
 
+  const obj = data as { id: unknown; email: unknown; role: unknown };
 
+  // Invalid types
+  if (typeof obj.id !== "string") {
+    return { ok: false, error: "Invalid type for id (expected string)" };
+  }
 
+  if (typeof obj.email !== "string") {
+    return { ok: false, error: "Invalid type for email (expected string)" };
+  }
 
+  const role = obj.role;
+  if (role !== "intern" && role !== "mentor" && role !== "admin") {
+    return { ok: false, error: "Invalid role (expected intern|mentor|admin)" };
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-* {
-  box-sizing: border-box;
+  return { ok: true, value: { id: obj.id, email: obj.email, role } };
 }
 
-html, body {
-  margin: 0;
-  height: 100%;
-  font-family: Arial, sans-serif;
-  background: #ffffff;
-  color: #111;
-}
+// [2] Parse list of users
+export function parseUsersConfig(input: string): Result<User[]> {
+  let data: unknown;
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 14px;
-  border-bottom: 1px solid #ddd;
-  background: #f7f7f7;
-}
+  // Checks whether the input is valid JSON
+  try {
+    data = JSON.parse(input);
+  } catch {
+    return { ok: false, error: "Invalid JSON" };
+  }
 
-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-}
+  // JSON must be an array
+  if (!Array.isArray(data)) {
+    return { ok: false, error: "Invalid Users shape" };
+  }
 
-input[type="range"] {
-  width: 100px;
-}
+  const users: User[] = [];
 
-button {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  background: #2563eb;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #1e4fd6;
-}
-
-.canvas-wrapper {
-  position: relative;
-  height: calc(100vh - 52px);
-}
-
-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  background: white;
-}
-
-.window-state {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  padding: 8px 10px;
-  font-size: 12px;
-  border: 1px solid #ddd;
-  background: white;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-
-const shapeSelect = document.getElementById("shape");
-const sizeInput = document.getElementById("size");
-const sizeVal = document.getElementById("sizeVal");
-const colorInput = document.getElementById("color");
-const clearBtn = document.getElementById("clearBtn");
-const windowState = document.getElementById("windowState");
-
-const objects = [];
-
-function resizeCanvas() {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-  draw();
-  updateWindowState();
-}
-
-function updateWindowState() {
-  windowState.innerHTML =
-    `scroll: (${window.scrollX}, ${window.scrollY})<br>` +
-    `viewport: ${window.innerWidth} × ${window.innerHeight}<br>` +
-    `canvas: ${canvas.width} × ${canvas.height}<br>` +
-    `objects: ${objects.length}`;
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  objects.forEach(o => {
-    ctx.fillStyle = o.color;
-    ctx.strokeStyle = "#111";
-
-    if (o.shape === "circle") {
-      ctx.beginPath();
-      ctx.arc(o.x, o.y, o.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      const w = o.size * 2;
-      const h = o.size * 2;
-      ctx.fillRect(o.x - w / 2, o.y - h / 2, w, h);
-      ctx.strokeRect(o.x - w / 2, o.y - h / 2, w, h);
+  for (const item of data) {
+    // Every element must be a valid User
+    if (typeof item !== "object" || item === null) {
+      return { ok: false, error: "Invalid Users shape" };
     }
-  });
+
+    if (!("id" in item) || !("email" in item) || !("role" in item)) {
+      return { ok: false, error: "Invalid Users shape" };
+    }
+
+    const obj = item as { id: unknown; email: unknown; role: unknown };
+
+    if (typeof obj.id !== "string") return { ok: false, error: "Invalid Users shape" };
+    if (typeof obj.email !== "string") return { ok: false, error: "Invalid Users shape" };
+
+    const role = obj.role;
+    if (role !== "intern" && role !== "mentor" && role !== "admin") {
+      return { ok: false, error: "Invalid Users shape" };
+    }
+
+    users.push({ id: obj.id, email: obj.email, role });
+  }
+
+  return { ok: true, value: users };
 }
 
-canvas.addEventListener("click", (event) => {
-  const rect = canvas.getBoundingClientRect();
 
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
+// Short console.log demo
+const inputs = [
+  '{"id":"u1","email":"a@b.com","role":"intern"}',
+  '{"id":"u2","email":"a@b.com","role":"boss"}',
+  '{"id":123,"email":"a@b.com","role":"intern"}',
+  "not json",
+];
 
-  objects.push({
-    shape: shapeSelect.value,
-    x,
-    y,
-    size: Number(sizeInput.value),
-    color: colorInput.value
-  });
+for (const s of inputs) {
+  console.log("[1]", s, ":", parseUserConfig(s));
+}
 
-  draw();
-  updateWindowState();
-});
+const listOk = JSON.stringify([
+  { id: "u1", email: "a@b.com", role: "intern" },
+  { id: "u2", email: "b@c.com", role: "mentor" },
+]);
 
-sizeInput.addEventListener("input", () => {
-  sizeVal.textContent = sizeInput.value;
-});
+const listBad = JSON.stringify([
+  { id: "u1", email: "a@b.com", role: "intern" },
+  { id: "u2", email: "b@c.com", role: "boss" },
+]);
 
-clearBtn.addEventListener("click", () => {
-  objects.length = 0;
-  draw();
-  updateWindowState();
-});
+console.log("[2] ok :", parseUsersConfig(listOk));
+console.log("[2] bad :", parseUsersConfig(listBad));
+console.log("[2] not array :", parseUsersConfig('{"id":"u1"}'));
+console.log("[2] invalid json :", parseUsersConfig("{"));
 
-window.addEventListener("resize", resizeCanvas);
-window.addEventListener("scroll", updateWindowState);
-
-sizeVal.textContent = sizeInput.value;
-resizeCanvas();
