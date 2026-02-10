@@ -10,6 +10,7 @@ function MovieCard({ movie }) {
       />
 
       <h3>{movie.title}</h3>
+
       <p className="meta">
         {movie.genre} • {movie.rating}
       </p>
@@ -22,8 +23,36 @@ function MovieCard({ movie }) {
 export default function App() {
   return (
     <div className="container">
-      <h1>Movies</h1>
+      {/* NAV */}
+      <div className="nav">
+        <button className="nav-btn active">Home</button>
+        <button className="nav-btn">Watchlist</button>
+      </div>
 
+      {/* SEARCH */}
+      <input
+        className="search"
+        placeholder="Search movies..."
+      />
+
+      {/* FILTERS */}
+      <div className="filters">
+        <div className="filter">
+          <span>Genre</span>
+          <select>
+            <option>All Genres</option>
+          </select>
+        </div>
+
+        <div className="filter">
+          <span>Rating</span>
+          <select>
+            <option>All</option>
+          </select>
+        </div>
+      </div>
+
+      {/* GRID */}
       <div className="grid">
         {movies.map((m) => (
           <MovieCard key={m.id} movie={m} />
@@ -35,29 +64,6 @@ export default function App() {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-import React from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.jsx";
-import "./index.css";
-
-createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
 
 
 
@@ -83,40 +89,97 @@ body {
 }
 
 .container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
 
+/* NAV */
+.nav {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.nav-btn {
+  background: white;
+  color: black;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.nav-btn.active {
+  background: #ddd;
+}
+
+/* SEARCH */
+.search {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 999px;
+  border: none;
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+/* FILTERS */
+.filters {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.filter {
+  background: #1a2236;
+  padding: 8px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter select {
+  background: transparent;
+  color: white;
+  border: none;
+}
+
+/* GRID */
 .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  gap: 16px;
 }
 
+/* CARD */
 .card {
-  background: #111a2b;
-  border-radius: 12px;
-  overflow: hidden;
-  padding: 10px;
+  background: #151b2d;
+  border-radius: 16px;
+  padding: 12px;
 }
 
 .poster {
   width: 100%;
   height: 160px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .meta {
   color: #b6c2d9;
-  margin: 6px 0 10px;
+  margin-bottom: 10px;
 }
 
-button {
+.card button {
   width: 100%;
   padding: 10px;
-  border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
+  border: none;
+  background: #222b44;
+  color: white;
   cursor: pointer;
 }
