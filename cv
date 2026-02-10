@@ -1,127 +1,122 @@
-// exercise.ts
+import movies from "./movies.json";
 
-// Starter types (do not change)
-type Role = "intern" | "mentor" | "admin";
+function MovieCard({ movie }) {
+  return (
+    <div className="card">
+      <img
+        className="poster"
+        src={`/images/${movie.image}`}
+        alt={movie.title}
+      />
 
-export type User = {
-  id: string;
-  email: string;
-  role: Role;
-};
+      <h3>{movie.title}</h3>
+      <p className="meta">
+        {movie.genre} • {movie.rating}
+      </p>
 
-export type Result<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: string };
-
-// [1] Implement
-export function parseUserConfig(input: string): Result<User> {
-  let data: unknown;
-
-  // Checks whether the input is valid JSON
-  try {
-    data = JSON.parse(input);
-  } catch {
-    return { ok: false, error: "Invalid JSON" };
-  }
-
-  // Checks that the parsed JSON is an object
-  if (typeof data !== "object" || data === null) {
-    return { ok: false, error: "Invalid User shape" };
-  }
-
-  // Missing fields
-  if (!("id" in data)) return { ok: false, error: "Missing field: id" };
-  if (!("email" in data)) return { ok: false, error: "Missing field: email" };
-  if (!("role" in data)) return { ok: false, error: "Missing field: role" };
-
-  const obj = data as { id: unknown; email: unknown; role: unknown };
-
-  // Invalid types
-  if (typeof obj.id !== "string") {
-    return { ok: false, error: "Invalid type for id (expected string)" };
-  }
-
-  if (typeof obj.email !== "string") {
-    return { ok: false, error: "Invalid type for email (expected string)" };
-  }
-
-  const role = obj.role;
-  if (role !== "intern" && role !== "mentor" && role !== "admin") {
-    return { ok: false, error: "Invalid role (expected intern|mentor|admin)" };
-  }
-
-  return { ok: true, value: { id: obj.id, email: obj.email, role } };
+      <button>Add to Watchlist</button>
+    </div>
+  );
 }
 
-// [2] Parse list of users
-export function parseUsersConfig(input: string): Result<User[]> {
-  let data: unknown;
+export default function App() {
+  return (
+    <div className="container">
+      <h1>Movies</h1>
 
-  // Checks whether the input is valid JSON
-  try {
-    data = JSON.parse(input);
-  } catch {
-    return { ok: false, error: "Invalid JSON" };
-  }
-
-  // JSON must be an array
-  if (!Array.isArray(data)) {
-    return { ok: false, error: "Invalid Users shape" };
-  }
-
-  const users: User[] = [];
-
-  for (const item of data) {
-    // Every element must be a valid User
-    if (typeof item !== "object" || item === null) {
-      return { ok: false, error: "Invalid Users shape" };
-    }
-
-    if (!("id" in item) || !("email" in item) || !("role" in item)) {
-      return { ok: false, error: "Invalid Users shape" };
-    }
-
-    const obj = item as { id: unknown; email: unknown; role: unknown };
-
-    if (typeof obj.id !== "string") return { ok: false, error: "Invalid Users shape" };
-    if (typeof obj.email !== "string") return { ok: false, error: "Invalid Users shape" };
-
-    const role = obj.role;
-    if (role !== "intern" && role !== "mentor" && role !== "admin") {
-      return { ok: false, error: "Invalid Users shape" };
-    }
-
-    users.push({ id: obj.id, email: obj.email, role });
-  }
-
-  return { ok: true, value: users };
+      <div className="grid">
+        {movies.map((m) => (
+          <MovieCard key={m.id} movie={m} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 
-// Short console.log demo
-const inputs = [
-  '{"id":"u1","email":"a@b.com","role":"intern"}',
-  '{"id":"u2","email":"a@b.com","role":"boss"}',
-  '{"id":123,"email":"a@b.com","role":"intern"}',
-  "not json",
-];
 
-for (const s of inputs) {
-  console.log("[1]", s, ":", parseUserConfig(s));
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css";
+
+createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0b0f16;
+  color: white;
 }
 
-const listOk = JSON.stringify([
-  { id: "u1", email: "a@b.com", role: "intern" },
-  { id: "u2", email: "b@c.com", role: "mentor" },
-]);
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-const listBad = JSON.stringify([
-  { id: "u1", email: "a@b.com", role: "intern" },
-  { id: "u2", email: "b@c.com", role: "boss" },
-]);
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
 
-console.log("[2] ok :", parseUsersConfig(listOk));
-console.log("[2] bad :", parseUsersConfig(listBad));
-console.log("[2] not array :", parseUsersConfig('{"id":"u1"}'));
-console.log("[2] invalid json :", parseUsersConfig("{"));
+.card {
+  background: #111a2b;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 10px;
+}
 
+.poster {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.meta {
+  color: #b6c2d9;
+  margin: 6px 0 10px;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
