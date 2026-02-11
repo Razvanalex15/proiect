@@ -1,95 +1,33 @@
-import { useState } from "react";
-import movies from "./data/movies.json";
-
-function MovieCard({ movie }) {
-  return (
-    <div className="card">
-      <img
-        className="poster"
-        src={`/images/${movie.image}`}
-        alt={movie.title}
-      />
-
-      <h3>{movie.title}</h3>
-
-      <p className="meta">
-        {movie.genre} • {movie.rating}
-      </p>
-
-      <button>Add to Watchlist</button>
-    </div>
+if (sortType === "rating-desc") {
+  sortedMovies.sort((a, b) =>
+    Number(b.rating) - Number(a.rating)
   );
 }
 
-export default function App() {
-  const [sortType, setSortType] = useState("none");
-
-  let sortedMovies = [...movies];
-
-  if (sortType === "rating") {
-    sortedMovies.sort((a, b) =>
-      Number(b.rating) - Number(a.rating)
-    );
-  }
-
-  if (sortType === "rating") {
-    sortedMovies.sort((a, b) =>
-      Number(a.rating) - Number(b.rating)
-    );
-  }
-
-  if (sortType === "alphabet") {
-    sortedMovies.sort((a, b) =>
-      a.title.localeCompare(b.title)
-    );
-  }
-
-  return (
-    <div className="container">
-      <div className="nav">
-        <button className="nav-btn active">Home</button>
-        <button className="nav-btn">Watchlist</button>
-      </div>
-
-      <input
-        className="search"
-        placeholder="Search movies..."
-      />
-
-      <div className="filters">
-        <div className="filter">
-          <span>Genre</span>
-          <select>
-            <option>All Genres</option>
-          </select>
-        </div>
-
-        <div className="filter">
-          <span>Rating</span>
-          <select>
-            <option>All</option>
-          </select>
-        </div>
-
-        <div className="filter">
-          <span>Sort</span>
-          <select
-            value={sortType}
-            onChange={(e) => setSortType(e.target.value)}
-          >
-            <option value="none">None</option>
-            <option value="rating">Rating (High to Low)</option>
-            <option value="rating">Rating (Low to High)</option>
-            <option value="alphabet">A-Z</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="grid">
-        {sortedMovies.map((m) => (
-          <MovieCard key={m.id} movie={m} />
-        ))}
-        </div>
-       </div>
+if (sortType === "rating-asc") {
+  sortedMovies.sort((a, b) =>
+    Number(a.rating) - Number(b.rating)
   );
 }
+
+if (sortType === "alphabet") {
+  sortedMovies.sort((a, b) =>
+    a.title.localeCompare(b.title)
+  );
+}
+
+
+
+
+
+
+
+<select
+  value={sortType}
+  onChange={(e) => setSortType(e.target.value)}
+>
+  <option value="none">None</option>
+  <option value="rating-desc">Rating (High to Low)</option>
+  <option value="rating-asc">Rating (Low to High)</option>
+  <option value="alphabet">A-Z</option>
+</select>
