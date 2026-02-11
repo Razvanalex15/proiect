@@ -1,3 +1,4 @@
+import { useState } from "react";
 import movies from "./movies.json";
 
 function MovieCard({ movie }) {
@@ -21,6 +22,23 @@ function MovieCard({ movie }) {
 }
 
 export default function App() {
+  const [sortType, setSortType] = useState("none");
+
+  // facem copie ca să nu modificăm originalul
+  let sortedMovies = [...movies];
+
+  if (sortType === "rating") {
+    sortedMovies.sort((a, b) =>
+      Number(b.rating) - Number(a.rating)
+    );
+  }
+
+  if (sortType === "alphabet") {
+    sortedMovies.sort((a, b) =>
+      a.title.localeCompare(b.title)
+    );
+  }
+
   return (
     <div className="container">
       {/* NAV */}
@@ -50,136 +68,27 @@ export default function App() {
             <option>All</option>
           </select>
         </div>
+
+        {/* SORT */}
+        <div className="filter">
+          <span>Sort</span>
+          <select
+            value={sortType}
+            onChange={(e) => setSortType(e.target.value)}
+          >
+            <option value="none">None</option>
+            <option value="rating">Rating (High to Low)</option>
+            <option value="alphabet">A-Z</option>
+          </select>
+        </div>
       </div>
 
       {/* GRID */}
       <div className="grid">
-        {movies.map((m) => (
+        {sortedMovies.map((m) => (
           <MovieCard key={m.id} movie={m} />
         ))}
       </div>
     </div>
   );
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0b0f16;
-  color: white;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-/* NAV */
-.nav {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.nav-btn {
-  background: white;
-  color: black;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.nav-btn.active {
-  background: #ddd;
-}
-
-/* SEARCH */
-.search {
-  width: 100%;
-  padding: 14px 18px;
-  border-radius: 999px;
-  border: none;
-  margin-bottom: 16px;
-  font-size: 16px;
-}
-
-/* FILTERS */
-.filters {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.filter {
-  background: #1a2236;
-  padding: 8px 12px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter select {
-  background: transparent;
-  color: white;
-  border: none;
-}
-
-/* GRID */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-/* CARD */
-.card {
-  background: #151b2d;
-  border-radius: 16px;
-  padding: 12px;
-}
-
-.poster {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  border-radius: 12px;
-}
-
-.meta {
-  color: #b6c2d9;
-  margin-bottom: 10px;
-}
-
-.card button {
-  width: 100%;
-  padding: 10px;
-  border-radius: 999px;
-  border: none;
-  background: #222b44;
-  color: white;
-  cursor: pointer;
 }
