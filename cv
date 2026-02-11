@@ -1,5 +1,5 @@
 import { useState } from "react";
-import movies from "./movies.json";
+import movies from "./data/movies.json";
 
 function MovieCard({ movie }) {
   return (
@@ -24,12 +24,17 @@ function MovieCard({ movie }) {
 export default function App() {
   const [sortType, setSortType] = useState("none");
 
-  // facem copie ca să nu modificăm originalul
   let sortedMovies = [...movies];
 
   if (sortType === "rating") {
     sortedMovies.sort((a, b) =>
       Number(b.rating) - Number(a.rating)
+    );
+  }
+
+  if (sortType === "rating") {
+    sortedMovies.sort((a, b) =>
+      Number(a.rating) - Number(b.rating)
     );
   }
 
@@ -41,19 +46,16 @@ export default function App() {
 
   return (
     <div className="container">
-      {/* NAV */}
       <div className="nav">
         <button className="nav-btn active">Home</button>
         <button className="nav-btn">Watchlist</button>
       </div>
 
-      {/* SEARCH */}
       <input
         className="search"
         placeholder="Search movies..."
       />
 
-      {/* FILTERS */}
       <div className="filters">
         <div className="filter">
           <span>Genre</span>
@@ -69,7 +71,6 @@ export default function App() {
           </select>
         </div>
 
-        {/* SORT */}
         <div className="filter">
           <span>Sort</span>
           <select
@@ -78,17 +79,17 @@ export default function App() {
           >
             <option value="none">None</option>
             <option value="rating">Rating (High to Low)</option>
+            <option value="rating">Rating (Low to High)</option>
             <option value="alphabet">A-Z</option>
           </select>
         </div>
       </div>
 
-      {/* GRID */}
       <div className="grid">
         {sortedMovies.map((m) => (
           <MovieCard key={m.id} movie={m} />
         ))}
-      </div>
-    </div>
+        </div>
+       </div>
   );
 }
