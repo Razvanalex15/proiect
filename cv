@@ -4,11 +4,7 @@ import movies from "./data/movies.json";
 function MovieCard({ movie }) {
   return (
     <div className="card">
-      <img
-        className="poster"
-        src={`/images/${movie.image}`}
-        alt={movie.title}
-      />
+      <img className="poster" src={`/images/${movie.image}`} alt={movie.title} />
 
       <h3>{movie.title}</h3>
 
@@ -24,11 +20,17 @@ function MovieCard({ movie }) {
 export default function App() {
   const [sortType, setSortType] = useState("none");
   const [search, setSearch] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("all");
 
-  // 1) Filter
-  const filteredMovies = movies.filter((movie) =>
-    movie.title.toLowerCase().includes(search.toLowerCase())
-  );
+  // genuri unice (din date)
+  const genres = [...new Set(movies.map((movie) => movie.genre))];
+
+  // 1) Filter (genre + search)
+  const filteredMovies = movies.filter((movie) => {
+    const matchesSearch = movie.title.toLowerCase().includes(search.toLowerCase());
+    const matchesGenre = selectedGenre === "all" || movie.genre === selectedGenre;
+    return matchesSearch && matchesGenre;
+  });
 
   // 2) Sort (pe copie)
   const sortedMovies = [...filteredMovies];
@@ -48,7 +50,7 @@ export default function App() {
         <button className="nav-btn">Watchlist</button>
       </div>
 
-      {/* SEARCH (o singură bară) */}
+      {/* SEARCH */}
       <input
         className="search"
         placeholder="Search movies..."
@@ -57,13 +59,23 @@ export default function App() {
       />
 
       <div className="filters">
+        {/* GENRE (funcțional) */}
         <div className="filter">
           <span>Genre</span>
-          <select>
-            <option>All Genres</option>
+          <select
+            value={selectedGenre}
+            onChange={(e) => setSelectedGenre(e.target.value)}
+          >
+            <option value="all">All Genres</option>
+            {genres.map((genre) => (
+              <option key={genre} value={genre}>
+                {genre}
+              </option>
+            ))}
           </select>
         </div>
 
+        {/* RATING (încă UI only) */}
         <div className="filter">
           <span>Rating</span>
           <select>
@@ -71,6 +83,7 @@ export default function App() {
           </select>
         </div>
 
+        {/* SORT */}
         <div className="filter">
           <span>Sort</span>
           <select value={sortType} onChange={(e) => setSortType(e.target.value)}>
