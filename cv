@@ -13,7 +13,7 @@ function MovieCard({ movie }) {
       <h3>{movie.title}</h3>
 
       <p className="meta">
-        {movie.genre}  {movie.rating}
+        {movie.genre} • {movie.rating}
       </p>
 
       <button>Add to Watchlist</button>
@@ -25,33 +25,21 @@ export default function App() {
   const [sortType, setSortType] = useState("none");
   const [search, setSearch] = useState("");
 
-  let sortedMovies = [...movies];
- 
-  let filteredMovies = movies.filter((movie) =>
-       movie.title.toLowerCase().includes(search.toLowerCase())
+  // 1) Filter
+  const filteredMovies = movies.filter((movie) =>
+    movie.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  sortedMovies = [...filteredMovies];
-
+  // 2) Sort (pe copie)
+  const sortedMovies = [...filteredMovies];
 
   if (sortType === "rating-desc") {
-  sortedMovies.sort((a, b) =>
-    Number(b.rating) - Number(a.rating)
-    );
+    sortedMovies.sort((a, b) => Number(b.rating) - Number(a.rating));
+  } else if (sortType === "rating-asc") {
+    sortedMovies.sort((a, b) => Number(a.rating) - Number(b.rating));
+  } else if (sortType === "alphabet") {
+    sortedMovies.sort((a, b) => a.title.localeCompare(b.title));
   }
-
-if (sortType === "rating-asc") {
-  sortedMovies.sort((a, b) =>
-    Number(a.rating) - Number(b.rating)
-    );
-  }
-
-if (sortType === "alphabet") {
-  sortedMovies.sort((a, b) =>
-    a.title.localeCompare(b.title)
-    );
-  }
-
 
   return (
     <div className="container">
@@ -60,11 +48,7 @@ if (sortType === "alphabet") {
         <button className="nav-btn">Watchlist</button>
       </div>
 
-      <input
-        className="search"
-        placeholder="Search movies..."
-      />
-
+      {/* SEARCH (o singură bară) */}
       <input
         className="search"
         placeholder="Search movies..."
@@ -89,10 +73,7 @@ if (sortType === "alphabet") {
 
         <div className="filter">
           <span>Sort</span>
-          <select
-            value={sortType}
-            onChange={(e) => setSortType(e.target.value)}
-          >
+          <select value={sortType} onChange={(e) => setSortType(e.target.value)}>
             <option value="none">None</option>
             <option value="rating-desc">Rating (High to Low)</option>
             <option value="rating-asc">Rating (Low to High)</option>
@@ -105,7 +86,7 @@ if (sortType === "alphabet") {
         {sortedMovies.map((m) => (
           <MovieCard key={m.id} movie={m} />
         ))}
-        </div>
-       </div>
+      </div>
+    </div>
   );
 }
