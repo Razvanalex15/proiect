@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import movies from "./data/movies.json";
 
@@ -22,17 +23,14 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("all");
 
-  // genuri unice (din date)
   const genres = [...new Set(movies.map((movie) => movie.genre))];
 
-  // 1) Filter (genre + search)
   const filteredMovies = movies.filter((movie) => {
     const matchesSearch = movie.title.toLowerCase().includes(search.toLowerCase());
     const matchesGenre = selectedGenre === "all" || movie.genre === selectedGenre;
     return matchesSearch && matchesGenre;
   });
 
-  // 2) Sort (pe copie)
   const sortedMovies = [...filteredMovies];
 
   if (sortType === "rating-desc") {
@@ -50,7 +48,6 @@ export default function App() {
         <button className="nav-btn">Watchlist</button>
       </div>
 
-      {/* SEARCH */}
       <input
         className="search"
         placeholder="Search movies..."
@@ -59,7 +56,6 @@ export default function App() {
       />
 
       <div className="filters">
-        {/* GENRE (funcțional) */}
         <div className="filter">
           <span>Genre</span>
           <select
@@ -75,7 +71,6 @@ export default function App() {
           </select>
         </div>
 
-        {/* RATING (încă UI only) */}
         <div className="filter">
           <span>Rating</span>
           <select>
@@ -83,7 +78,6 @@ export default function App() {
           </select>
         </div>
 
-        {/* SORT */}
         <div className="filter">
           <span>Sort</span>
           <select value={sortType} onChange={(e) => setSortType(e.target.value)}>
