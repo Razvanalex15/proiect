@@ -1,16 +1,30 @@
-
 import { useState } from "react";
 import movies from "./data/movies.json";
+
+function getRatingClass(rating) {
+  const r = Number(rating);
+
+  if (r >= 8) return "rating-good";
+  if (r >= 5) return "rating-mid";
+  return "rating-bad";
+}
 
 function MovieCard({ movie }) {
   return (
     <div className="card">
-      <img className="poster" src={`/images/${movie.image}`} alt={movie.title} />
+      <img
+        className="poster"
+        src={`/images/${movie.image}`}
+        alt={movie.title}
+      />
 
       <h3>{movie.title}</h3>
 
       <p className="meta">
-        {movie.genre} • {movie.rating}
+      {movie.genre} 
+      <span className={getRatingClass(movie.rating)}>
+        {movie.rating}
+        </span>
       </p>
 
       <button>Add to Watchlist</button>
@@ -26,8 +40,12 @@ export default function App() {
   const genres = [...new Set(movies.map((movie) => movie.genre))];
 
   const filteredMovies = movies.filter((movie) => {
-    const matchesSearch = movie.title.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = movie.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
     const matchesGenre = selectedGenre === "all" || movie.genre === selectedGenre;
+
     return matchesSearch && matchesGenre;
   });
 
@@ -97,3 +115,44 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+.rating-good {
+  background: #1f7a3a;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  margin-left: 6px;
+}
+
+.rating-mid {
+  background: #d4a017;
+  color: black;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  margin-left: 6px;
+}
+
+.rating-bad {
+  background: #b83a3a;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  margin-left: 6px;
+}
+
