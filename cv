@@ -1,71 +1,197 @@
-import { useState } from "react";
-import movies from "./data/movies.json";
+import { useEffect, useState } from "react";
+
+export default function useLocalStorage(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : initialValue;
+    } catch {
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // ignore
+    }
+  }, [key, value]);
+
+  return [value, setValue];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { createContext, useContext, useMemo } from "react";
+import useLocalStorage from "../hooks/useLocalStorage";
+
+const WatchlistContext = createContext(null);
+
+export function WatchlistProvider({ children }) {
+  const [watchlistIds, setWatchlistIds] = useLocalStorage("watchlist", []);
+
+  const toggleWatchlist = (movieId) => {
+    setWatchlistIds((prev) =>
+      prev.includes(movieId) ? prev.filter((id) => id !== movieId) : [...prev, movieId]
+    );
+  };
+
+  const isInWatchlist = (movieId) => watchlistIds.includes(movieId);
+
+  const value = useMemo(
+    () => ({ watchlistIds, toggleWatchlist, isInWatchlist }),
+    [watchlistIds]
+  );
+
+  return <WatchlistContext.Provider value={value}>{children}</WatchlistContext.Provider>;
+}
+
+export function useWatchlist() {
+  const ctx = useContext(WatchlistContext);
+  if (!ctx) throw new Error("useWatchlist must be used inside WatchlistProvider");
+  return ctx;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useWatchlist } from "../context/WatchlistContext";
 
 function getRatingClass(rating) {
   const r = Number(rating);
-
   if (r >= 8) return "rating-good";
   if (r >= 5) return "rating-mid";
   return "rating-bad";
 }
 
-function MovieCard({ movie }) {
+export default function MovieCard({ movie }) {
+  const { toggleWatchlist, isInWatchlist } = useWatchlist();
+  const inList = isInWatchlist(movie.id);
+
   return (
     <div className="card">
-      <img
-        className="poster"
-        src={`/images/${movie.image}`}
-        alt={movie.title}
-      />
+      <img className="poster" src={`/images/${movie.image}`} alt={movie.title} />
 
       <h3>{movie.title}</h3>
 
       <p className="meta">
-      {movie.genre} 
-      <span className={getRatingClass(movie.rating)}>
-        {movie.rating}
-        </span>
+        {movie.genre}{" "}
+        <span className={getRatingClass(movie.rating)}>{movie.rating}</span>
       </p>
 
-      <button>Add to Watchlist</button>
+      <button
+        className={inList ? "btn-watchlist in" : "btn-watchlist"}
+        onClick={() => toggleWatchlist(movie.id)}
+      >
+        {inList ? "In Watchlist" : "Add to Watchlist"}
+      </button>
     </div>
   );
 }
 
-export default function App() {
-  const [sortType, setSortType] = useState("none");
-  const [search, setSearch] = useState("");
-  const [selectedGenre, setSelectedGenre] = useState("all");
 
-  const genres = [...new Set(movies.map((movie) => movie.genre))];
 
-  const filteredMovies = movies.filter((movie) => {
-    const matchesSearch = movie.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
 
-    const matchesGenre = selectedGenre === "all" || movie.genre === selectedGenre;
 
-    return matchesSearch && matchesGenre;
-  });
 
-  const sortedMovies = [...filteredMovies];
 
-  if (sortType === "rating-desc") {
-    sortedMovies.sort((a, b) => Number(b.rating) - Number(a.rating));
-  } else if (sortType === "rating-asc") {
-    sortedMovies.sort((a, b) => Number(a.rating) - Number(b.rating));
-  } else if (sortType === "alphabet") {
-    sortedMovies.sort((a, b) => a.title.localeCompare(b.title));
-  }
 
+
+
+
+
+
+
+
+
+
+
+
+
+export default function NavBar({ activeTab, onChangeTab, watchlistCount }) {
   return (
-    <div className="container">
-      <div className="nav">
-        <button className="nav-btn active">Home</button>
-        <button className="nav-btn">Watchlist</button>
-      </div>
+    <div className="nav">
+      <button
+        className={`nav-btn ${activeTab === "home" ? "active" : ""}`}
+        onClick={() => onChangeTab("home")}
+      >
+        Home
+      </button>
 
+      <button
+        className={`nav-btn ${activeTab === "watchlist" ? "active" : ""}`}
+        onClick={() => onChangeTab("watchlist")}
+      >
+        Watchlist{watchlistCount ? ` (${watchlistCount})` : ""}
+      </button>
+    </div>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export default function FiltersBar({
+  search,
+  setSearch,
+  selectedGenre,
+  setSelectedGenre,
+  sortType,
+  setSortType,
+  genres,
+}) {
+  return (
+    <>
       <input
         className="search"
         placeholder="Search movies..."
@@ -76,23 +202,13 @@ export default function App() {
       <div className="filters">
         <div className="filter">
           <span>Genre</span>
-          <select
-            value={selectedGenre}
-            onChange={(e) => setSelectedGenre(e.target.value)}
-          >
+          <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)}>
             <option value="all">All Genres</option>
             {genres.map((genre) => (
               <option key={genre} value={genre}>
                 {genre}
               </option>
             ))}
-          </select>
-        </div>
-
-        <div className="filter">
-          <span>Rating</span>
-          <select>
-            <option>All</option>
           </select>
         </div>
 
@@ -106,12 +222,114 @@ export default function App() {
           </select>
         </div>
       </div>
+    </>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useMemo, useState } from "react";
+import MovieCard from "../components/MovieCard";
+import FiltersBar from "../components/FiltersBar";
+
+export default function Home({ movies }) {
+  const [sortType, setSortType] = useState("none");
+  const [search, setSearch] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("all");
+
+  const genres = useMemo(() => [...new Set(movies.map((m) => m.genre))], [movies]);
+
+  const visibleMovies = useMemo(() => {
+    const filtered = movies.filter((movie) => {
+      const matchesSearch = movie.title.toLowerCase().includes(search.toLowerCase());
+      const matchesGenre = selectedGenre === "all" || movie.genre === selectedGenre;
+      return matchesSearch && matchesGenre;
+    });
+
+    const sorted = [...filtered];
+    if (sortType === "rating-desc") sorted.sort((a, b) => Number(b.rating) - Number(a.rating));
+    else if (sortType === "rating-asc") sorted.sort((a, b) => Number(a.rating) - Number(b.rating));
+    else if (sortType === "alphabet") sorted.sort((a, b) => a.title.localeCompare(b.title));
+
+    return sorted;
+  }, [movies, search, selectedGenre, sortType]);
+
+  return (
+    <>
+      <FiltersBar
+        search={search}
+        setSearch={setSearch}
+        selectedGenre={selectedGenre}
+        setSelectedGenre={setSelectedGenre}
+        sortType={sortType}
+        setSortType={setSortType}
+        genres={genres}
+      />
 
       <div className="grid">
-        {sortedMovies.map((m) => (
+        {visibleMovies.map((m) => (
           <MovieCard key={m.id} movie={m} />
         ))}
       </div>
+    </>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import MovieCard from "../components/MovieCard";
+import { useWatchlist } from "../context/WatchlistContext";
+
+export default function Watchlist({ movies }) {
+  const { watchlistIds } = useWatchlist();
+  const watchlistMovies = movies.filter((m) => watchlistIds.includes(m.id));
+
+  if (watchlistMovies.length === 0) {
+    return <p style={{ opacity: 0.8 }}>Your watchlist is empty.</p>;
+  }
+
+  return (
+    <div className="grid">
+      {watchlistMovies.map((m) => (
+        <MovieCard key={m.id} movie={m} />
+      ))}
     </div>
   );
 }
@@ -126,33 +344,41 @@ export default function App() {
 
 
 
-.rating-good {
-  background: #1f7a3a;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 13px;
-  margin-left: 6px;
+
+
+
+
+
+
+
+
+
+
+
+import { useState } from "react";
+import movies from "./data/movies.json";
+
+import { WatchlistProvider, useWatchlist } from "./context/WatchlistContext";
+import NavBar from "./components/NavBar";
+import Home from "./pages/Home";
+import Watchlist from "./pages/Watchlist";
+
+function AppShell() {
+  const [tab, setTab] = useState("home");
+  const { watchlistIds } = useWatchlist();
+
+  return (
+    <div className="container">
+      <NavBar activeTab={tab} onChangeTab={setTab} watchlistCount={watchlistIds.length} />
+      {tab === "home" ? <Home movies={movies} /> : <Watchlist movies={movies} />}
+    </div>
+  );
 }
 
-.rating-mid {
-  background: #d4a017;
-  color: black;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 13px;
-  margin-left: 6px;
+export default function App() {
+  return (
+    <WatchlistProvider>
+      <AppShell />
+    </WatchlistProvider>
+  );
 }
-
-.rating-bad {
-  background: #b83a3a;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 13px;
-  margin-left: 6px;
-}
-
