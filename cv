@@ -1,3 +1,5 @@
+
+base.css
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -5,75 +7,13 @@ body {
   color: white;
 }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
 
-.nav {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
 
-.nav-btn {
-  background: white;
-  color: black;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
 
-.nav-btn.active {
-  background: #ddd;
-}
 
-.nav-btn:hover {
-  transform: scale(1.05);
-}
 
-.search {
-  width: 100%;
-  padding: 14px 18px;
-  border-radius: 999px;
-  border: none;
-  margin-bottom: 16px;
-  font-size: 16px;
-}
 
-.filters {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.filter {
-  background: #1a2236;
-  padding: 8px 12px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter select {
-  background: transparent;
-  color: white;
-  border: none;
-  outline: none;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
+components.css
 .card {
   background: #151b2d;
   border-radius: 16px;
@@ -151,4 +91,86 @@ body {
   font-weight: 700;
   font-size: 13px;
   margin-left: 6px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+layout.css
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.nav {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.nav-btn {
+  background: white;
+  color: black;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.nav-btn.active {
+  background: #ddd;
+}
+
+.nav-btn:hover {
+  transform: scale(1.05);
+}
+
+.search {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 999px;
+  border: none;
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.filters {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.filter {
+  background: #1a2236;
+  padding: 8px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter select {
+  background: transparent;
+  color: white;
+  border: none;
+  outline: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
