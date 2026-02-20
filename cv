@@ -1,15 +1,349 @@
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+import { useNavigate } from "react-router-dom";
+import { getRatingClass } from "../utils/rating";
+
+export default function MovieCard({ movie, isInWatchlist, onToggleWatchlist }) {
+  const navigate = useNavigate();
+  const inList = isInWatchlist(movie.id);
+
+  return (
+    <div className="card">
+      <div
+        onClick={() => navigate(`/movies/${movie.id}`)}
+        style={{ cursor: "pointer" }}
+      >
+        <img
+          className="poster"
+          src={`/images/${movie.image}`}
+          alt={movie.title}
+        />
+
+        <h3>{movie.title}</h3>
+
+        <p className="meta">
+          {movie.genre}{" "}
+          <span className={getRatingClass(movie.rating)}>{movie.rating}</span>
+        </p>
+      </div>
+
+      <button
+        className={inList ? "btn-watchlist in" : "btn-watchlist"}
+        onClick={() => onToggleWatchlist(movie.id)}
+      >
+        {inList ? "In Watchlist" : "Add to Watchlist"}
+      </button>
+    </div>
+  );
 }
 
-/* MovieDetails wrapper (prins după inline style) */
-.container > div[style] {
-  animation: fadeUp 0.25s ease both;
+
+
+
+
+import { useEffect, useState } from "react";
+
+// Functia pe care o primeste UseState se executa o singura data la primul render
+export default function useWatchlist(storageKey = "watchlist") {
+  const [watchlistIds, setWatchlistIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+    // Aici pur si simplu dupa JSON.parse ramane in watchlist: [1, 2, 3]
+  });
+
+  //De fiecare data cand se schimba watchlistIds, salveaza noua valoare in localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(watchlistIds));
+    } catch {
+
+    }
+  }, [storageKey, watchlistIds]);
+
+  //Verific daca exista id-ul in array
+  const isInWatchlist = (id) => watchlistIds.includes(id);
+
+  const add = (id) => {
+    setWatchlistIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const remove = (id) => {
+    setWatchlistIds((prev) => prev.filter((x) => x !== id));
+  };
+
+  //Daca exista id-ul, il elimina, daca nu exista, il adauga
+  const toggle = (id) => {
+    setWatchlistIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  return { watchlistIds, isInWatchlist, add, remove, toggle };
+}
+
+
+
+
+
+
+
+
+
+
+import { NavLink, Outlet } from "react-router-dom";
+
+export default function RootLayout() {
+  return (
+    <div className="container">
+      <div className="nav">
+        <NavLink
+          to="/movies"
+          end
+          className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}
+        >
+          Movies
+        </NavLink>
+
+        <NavLink
+          to="/watchlist"
+          className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}
+        >
+          Watchlist
+        </NavLink>
+      </div>
+
+      <Outlet />
+    </div>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+import { useParams, Link } from "react-router-dom";
+import movies from "../data/movies.json";
+import useWatchlist from "../hooks/useWatchlist";
+import { getRatingClass } from "../utils/rating.js";
+
+export default function MovieDetails() {
+  const { id } = useParams();
+  const movieId = Number(id);
+
+  //Cauta in array filmul cu id-ul respectiv, returneaza obiectul film, daca nu il gaseste, returneaza undefined
+  const movie = movies.find((m) => m.id === movieId);
+  const { isInWatchlist, toggle } = useWatchlist();
+
+  if (!movie) {
+    return (
+      <div>
+        <p>Movie not found.</p>
+        <Link to="/movies">← Back to Movies</Link>
+      </div>
+    );
+  }
+
+  const inList = isInWatchlist(movie.id);
+
+  return (
+    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+      <img
+        className="poster"
+        style={{ width: 260, height: 360 }}
+        src={`/images/${movie.image}`}
+        alt={movie.title}
+      />
+
+      <div>
+        <h2 style={{ marginTop: 0 }}>{movie.title}</h2>
+
+        <p className="meta">
+          {movie.genre}{" "}
+          <span className={getRatingClass(movie.rating)}>{movie.rating}</span>
+        </p>
+
+        <button
+          className={inList ? "btn-watchlist in" : "btn-watchlist"}
+          style={{ maxWidth: 260 }}
+          onClick={() => toggle(movie.id)}
+        >
+          {inList ? "In Watchlist" : "Add to Watchlist"}
+        </button>
+
+        <div style={{ marginTop: 12 }}>
+          <Link to="/movies">← Back to Movies</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import movies from "../data/movies.json";
+import useWatchlist from "../hooks/useWatchlist";
+import MovieCard from "../components/MovieCard";
+
+export default function MoviesPage() {
+  const { watchlistIds, isInWatchlist, toggle } = useWatchlist();
+
+  const [params, setParams] = useSearchParams();
+
+  const search = params.get("search") || "";
+  const genre = params.get("genre") || "all";
+  const order = params.get("order") || "none";
+
+  const genres = useMemo(() => [...new Set(movies.map((m) => m.genre))], []);
+
+  const visibleMovies = useMemo(() => {
+    const filtered = movies.filter((movie) => {
+      const matchesSearch = movie.title.toLowerCase().includes(search.toLowerCase());
+      const matchesGenre = genre === "all" || movie.genre === genre;
+      return matchesSearch && matchesGenre;
+    });
+
+    const sorted = [...filtered];
+
+    if (order === "desc") sorted.sort((a, b) => Number(b.rating) - Number(a.rating));
+    else if (order === "asc") sorted.sort((a, b) => Number(a.rating) - Number(b.rating));
+    else if (order === "az") sorted.sort((a, b) => a.title.localeCompare(b.title));
+
+    return sorted;
+  }, [search, genre, order]);
+
+  const updateParam = (key, value) => {
+    const next = new URLSearchParams(params);
+    if (!value || value === "none" || value === "all") next.delete(key);
+    else next.set(key, value);
+    setParams(next);
+  };
+
+  return (
+    <>
+      <input
+        className="search"
+        placeholder="Search movies..."
+        value={search}
+        onChange={(e) => updateParam("search", e.target.value)}
+      />
+
+      <div className="filters">
+        <div className="filter">
+          <span>Genre</span>
+          <select value={genre} onChange={(e) => updateParam("genre", e.target.value)}>
+            <option value="all">All Genres</option>
+            {genres.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter">
+          <span>Sort</span>
+          <select value={order} onChange={(e) => updateParam("order", e.target.value)}>
+            <option value="none">None</option>
+            <option value="desc">Rating (High to Low)</option>
+            <option value="asc">Rating (Low to High)</option>
+            <option value="az">A-Z</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid">
+        {visibleMovies.map((m) => (
+          <MovieCard
+            key={m.id}
+            movie={m}
+            isInWatchlist={isInWatchlist}
+            onToggleWatchlist={toggle}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Link } from "react-router-dom";
+
+export default function NotFound() {
+  return (
+    <div>
+      <h2>Page not found</h2>
+      <Link to="/movies">Go to Movies</Link>
+    </div>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import movies from "../data/movies.json";
+import useWatchlist from "../hooks/useWatchlist";
+import MovieCard from "../components/MovieCard";
+
+export default function WatchlistPage() {
+  const { watchlistIds, isInWatchlist, toggle } = useWatchlist();
+  const watchlistMovies = movies.filter((m) => watchlistIds.includes(m.id));
+
+  if (watchlistMovies.length === 0) {
+    return <p style={{ opacity: 0.8 }}>Your watchlist is empty.</p>;
+  }
+
+  return (
+    <div className="grid">
+      {watchlistMovies.map((m) => (
+        <MovieCard
+          key={m.id}
+          movie={m}
+          isInWatchlist={isInWatchlist}
+          onToggleWatchlist={toggle}
+        />
+      ))}
+    </div>
+  );
 }
