@@ -16,11 +16,6 @@ const watchlistSlice = createSlice({
       } else {
         state.watchlistIds.push(id);
       }
-
-      localStorage.setItem(
-        "watchlist",
-        JSON.stringify(state.watchlistIds)
-      );
     },
   },
 });
