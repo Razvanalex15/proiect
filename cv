@@ -1,16 +1,29 @@
-import { configureStore } from "@reduxjs/toolkit";
-import watchlistReducer from "./watchlistSlice";
+import { createSlice } from "@reduxjs/toolkit";
 
-export const store = configureStore({
-  reducer: {
-    watchlist: watchlistReducer,
+const initialState = {
+  watchlistIds: JSON.parse(localStorage.getItem("watchlist")) || [],
+};
+
+const watchlistSlice = createSlice({
+  name: "watchlist",
+  initialState,
+  reducers: {
+    toggle(state, action) {
+      const id = action.payload;
+
+      if (state.watchlistIds.includes(id)) {
+        state.watchlistIds = state.watchlistIds.filter((x) => x !== id);
+      } else {
+        state.watchlistIds.push(id);
+      }
+
+      localStorage.setItem(
+        "watchlist",
+        JSON.stringify(state.watchlistIds)
+      );
+    },
   },
 });
 
-store.subscribe(() => {
-  const state = store.getState();
-  localStorage.setItem(
-    "watchlist",
-    JSON.stringify(state.watchlist.watchlistIds)
-  );
-});
+export const { toggle } = watchlistSlice.actions;
+export default watchlistSlice.reducer;
