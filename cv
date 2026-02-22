@@ -1,4 +1,3 @@
-
 import movies from "../data/movies.json";
 import useWatchlist from "../hooks/useWatchlist";
 import MovieCard from "../components/MovieCard";
@@ -17,7 +16,7 @@ export default function WatchlistPage() {
         <MovieCard
           key={m.id}
           movie={m}
-          isInWatchlist={isInWatchlist}
+          isInWatchlist={isInWatchlist(m.id)}   {/* modificarea aici */}
           onToggleWatchlist={toggle}
         />
       ))}
