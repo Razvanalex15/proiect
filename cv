@@ -1,61 +1,19 @@
-package com.example.movietracker.domain.repository
+package com.example.movietracker.di
 
-import com.example.movietracker.domain.model.Movie
-import kotlinx.coroutines.flow.Flow
+import com.example.movietracker.data.repository.FakeMovieRepository
+import com.example.movietracker.domain.usecase.GetFavoriteMoviesUseCase
+import com.example.movietracker.domain.usecase.SearchMoviesUseCase
+import com.example.movietracker.domain.usecase.ToggleFavoriteMovieUseCase
 
-interface MovieRepository {
-    suspend fun searchMovies(query: String): List<Movie>
+object AppContainer {
 
-    suspend fun toggleFavorite(movie: Movie)
+    private val movieRepository = FakeMovieRepository()
 
-    fun getFavoriteMovies(): Flow<List<Movie>>
-}
+    val searchMoviesUseCase = SearchMoviesUseCase(movieRepository)
 
+    val toggleFavoriteMovieUseCase = ToggleFavoriteMovieUseCase(movieRepository)
 
-
-
-
-
-
-
-
-
-
-
-package com.example.movietracker.domain.usecase
-
-import com.example.movietracker.domain.model.Movie
-import com.example.movietracker.domain.repository.MovieRepository
-
-class ToggleFavoriteMovieUseCase(
-    private val repository: MovieRepository
-) {
-    suspend operator fun invoke(movie: Movie) {
-        repository.toggleFavorite(movie)
-    }
-}
-
-
-
-
-
-
-
-
-
-
-package com.example.movietracker.domain.usecase
-
-import com.example.movietracker.domain.model.Movie
-import com.example.movietracker.domain.repository.MovieRepository
-import kotlinx.coroutines.flow.Flow
-
-class GetFavoriteMoviesUseCase(
-    private val repository: MovieRepository
-) {
-    operator fun invoke(): Flow<List<Movie>> {
-        return repository.getFavoriteMovies()
-    }
+    val getFavoriteMoviesUseCase = GetFavoriteMoviesUseCase(movieRepository)
 }
 
 
@@ -74,73 +32,78 @@ class GetFavoriteMoviesUseCase(
 
 
 
-package com.example.movietracker.data.repository
 
+package com.example.movietracker.presentation.movie_list
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.movietracker.di.AppContainer
 import com.example.movietracker.domain.model.Movie
-import com.example.movietracker.domain.repository.MovieRepository
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class FakeMovieRepository : MovieRepository {
+class MovieListViewModel : ViewModel() {
 
-   private val movies = MutableStateFlow(
-    listOf(
-        Movie(
-            id = 1,
-            title = "Inception",
-            year = "2010",
-            posterUrl = null,
-            isFavorite = false
-        ),
-        Movie(
-            id = 2,
-            title = "Interstellar",
-            year = "2014",
-            posterUrl = null,
-            isFavorite = false
-        ),
-        Movie(
-            id = 3,
-            title = "The Dark Knight",
-            year = "2008",
-            posterUrl = null,
-            isFavorite = false
-        ),
-        Movie(
-            id = 4,
-            title = "Tenet",
-            year = "2020",
-            posterUrl = null,
-            isFavorite = false
-        )
-    )
-)
-    )
+    private val searchMoviesUseCase = AppContainer.searchMoviesUseCase
+    private val toggleFavoriteMovieUseCase = AppContainer.toggleFavoriteMovieUseCase
 
-    override suspend fun searchMovies(query: String): List<Movie> {
-        delay(500)
+    private val _uiState = MutableStateFlow(MovieListUiState())
+    val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
-        return movies.value.filter { movie ->
-            movie.title.contains(query, ignoreCase = true)
+    fun onEvent(event: MovieListUiEvent) {
+        when (event) {
+            is MovieListUiEvent.QueryChanged -> {
+                _uiState.update {
+                    it.copy(query = event.query)
+                }
+            }
+
+            MovieListUiEvent.SearchClicked -> {
+                searchMovies()
+            }
+
+            is MovieListUiEvent.FavoriteClicked -> {
+                toggleFavorite(event.movie)
+            }
+
+            is MovieListUiEvent.MovieClicked -> Unit
         }
     }
 
-    override suspend fun toggleFavorite(movie: Movie) {
-        movies.value = movies.value.map { currentMovie ->
-            if (currentMovie.id == movie.id) {
-                currentMovie.copy(isFavorite = !currentMovie.isFavorite)
-            } else {
-                currentMovie
+    private fun searchMovies() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isLoading = true)
+            }
+
+            val result = searchMoviesUseCase(_uiState.value.query)
+
+            _uiState.update {
+                it.copy(
+                    movies = result,
+                    isLoading = false
+                )
             }
         }
     }
 
-    override fun getFavoriteMovies(): Flow<List<Movie>> {
-        return movies.map { movieList ->
-            movieList.filter { movie ->
-                movie.isFavorite
+    private fun toggleFavorite(movie: Movie) {
+        viewModelScope.launch {
+            toggleFavoriteMovieUseCase(movie)
+
+            _uiState.update { currentState ->
+                currentState.copy(
+                    movies = currentState.movies.map { currentMovie ->
+                        if (currentMovie.id == movie.id) {
+                            currentMovie.copy(isFavorite = !currentMovie.isFavorite)
+                        } else {
+                            currentMovie
+                        }
+                    }
+                )
             }
         }
     }
@@ -154,33 +117,6 @@ class FakeMovieRepository : MovieRepository {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-package com.example.movietracker.presentation.favorites
-
-import com.example.movietracker.domain.model.Movie
-
-data class FavoritesUiState(
-    val movies: List<Movie> = emptyList(),
-    val isLoading: Boolean = false
-)
 
 
 
@@ -207,16 +143,14 @@ package com.example.movietracker.presentation.favorites
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.movietracker.domain.usecase.GetFavoriteMoviesUseCase
+import com.example.movietracker.di.AppContainer
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-class FavoritesViewModel(
-    getFavoriteMoviesUseCase: GetFavoriteMoviesUseCase
-) : ViewModel() {
+class FavoritesViewModel : ViewModel() {
 
-    val uiState = getFavoriteMoviesUseCase()
+    val uiState = AppContainer.getFavoriteMoviesUseCase()
         .map { movies ->
             FavoritesUiState(
                 movies = movies,
@@ -258,86 +192,165 @@ class FavoritesViewModel(
 
 
 
+package com.example.movietracker.presentation.favorites
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-package com.example.movietracker.presentation.movie_list
+@Composable
+fun FavoritesScreen(
+    viewModel: FavoritesViewModel,
+    onBackClick: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.movietracker.data.repository.FakeMovieRepository
-import com.example.movietracker.domain.model.Movie
-import com.example.movietracker.domain.usecase.SearchMoviesUseCase
-import com.example.movietracker.domain.usecase.ToggleFavoriteMovieUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "Favorites Screen")
 
-class MovieListViewModel : ViewModel() {
+        Button(
+            onClick = onBackClick
+        ) {
+            Text(text = "Back")
+        }
 
-    private val repository = FakeMovieRepository()
+        if (uiState.isLoading) {
+            Text(text = "Loading...")
+        }
 
-    private val searchMoviesUseCase = SearchMoviesUseCase(repository)
-    private val toggleFavoriteMovieUseCase = ToggleFavoriteMovieUseCase(repository)
+        if (uiState.movies.isEmpty() && !uiState.isLoading) {
+            Text(text = "No favorite movies yet.")
+        }
 
-    private val _uiState = MutableStateFlow(MovieListUiState())
-    val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
-
-    fun onEvent(event: MovieListUiEvent) {
-        when (event) {
-            is MovieListUiEvent.QueryChanged -> {
-                _uiState.update {
-                    it.copy(query = event.query)
+        uiState.movies.forEach { movie ->
+            Card(
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(text = movie.title)
+                    Text(text = movie.year)
                 }
             }
-
-            MovieListUiEvent.SearchClicked -> {
-                searchMovies()
-            }
-
-            is MovieListUiEvent.FavoriteClicked -> {
-                toggleFavorite(event.movie)
-            }
-
-            is MovieListUiEvent.MovieClicked -> {
-                // navigarea rămâne în UI
-            }
         }
     }
+}
 
-    private fun searchMovies() {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(isLoading = true)
-            }
 
-            val result = searchMoviesUseCase(_uiState.value.query)
 
-            _uiState.update {
-                it.copy(
-                    movies = result,
-                    isLoading = false
-                )
-            }
-        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.presentation.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.movietracker.presentation.favorites.FavoritesScreen
+import com.example.movietracker.presentation.favorites.FavoritesViewModel
+import com.example.movietracker.presentation.movie_detail.MovieDetailScreen
+import com.example.movietracker.presentation.movie_list.MovieListScreen
+import com.example.movietracker.presentation.movie_list.MovieListViewModel
+
+@Composable
+fun AppNavGraph() {
+    val navController = rememberNavController()
+
+    val movieListViewModel = remember {
+        MovieListViewModel()
     }
 
-    private fun toggleFavorite(movie: Movie) {
-        viewModelScope.launch {
-            toggleFavoriteMovieUseCase(movie)
+    val favoritesViewModel = remember {
+        FavoritesViewModel()
+    }
 
-            _uiState.update { currentState ->
-                currentState.copy(
-                    movies = currentState.movies.map { currentMovie ->
-                        if (currentMovie.id == movie.id) {
-                            currentMovie.copy(isFavorite = !currentMovie.isFavorite)
-                        } else {
-                            currentMovie
-                        }
-                    }
-                )
-            }
+    NavHost(
+        navController = navController,
+        startDestination = Screen.MovieList.route
+    ) {
+        composable(route = Screen.MovieList.route) {
+            MovieListScreen(
+                viewModel = movieListViewModel,
+                onMovieClick = { movieId ->
+                    navController.navigate(Screen.MovieDetail.createRoute(movieId))
+                },
+                onFavoritesClick = {
+                    navController.navigate(Screen.Favorites.route)
+                }
+            )
+        }
+
+        composable(
+            route = Screen.MovieDetail.route,
+            arguments = listOf(
+                navArgument("movieId") {
+                    type = NavType.IntType
+                }
+            )
+        ) { backStackEntry ->
+            val movieId = backStackEntry.arguments?.getInt("movieId") ?: return@composable
+
+            MovieDetailScreen(
+                movieId = movieId,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(route = Screen.Favorites.route) {
+            FavoritesScreen(
+                viewModel = favoritesViewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }
