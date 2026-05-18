@@ -1,14 +1,445 @@
-MovieListContent(
-    uiState = uiState,
-    onQueryChanged = { query ->
-        viewModel.onEvent(MovieListUiEvent.QueryChanged(query))
-    },
-    onSearchClick = {
-        viewModel.onEvent(MovieListUiEvent.SearchClicked)
-    },
-    onMovieClick = onMovieClick,
-    onFavoriteClick = { movie ->
-        viewModel.onEvent(MovieListUiEvent.FavoriteClicked(movie))
-    },
-    onFavoritesClick = onFavoritesClick
+package com.example.movietracker.domain.repository
+
+import com.example.movietracker.domain.model.Movie
+import kotlinx.coroutines.flow.Flow
+
+interface MovieRepository {
+    suspend fun searchMovies(query: String): Result<List<Movie>>
+
+    suspend fun getMovieById(movieId: Int): Result<Movie>
+
+    suspend fun toggleFavorite(movie: Movie)
+
+    fun getFavoriteMovies(): Flow<List<Movie>>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.data.repository
+
+import com.example.movietracker.domain.model.Movie
+import com.example.movietracker.domain.repository.MovieRepository
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+
+class FakeMovieRepository : MovieRepository {
+
+    private val movies = MutableStateFlow(
+        listOf(
+            Movie(
+                id = 1,
+                title = "Inception",
+                year = "2010",
+                isFavorite = true
+            ),
+            Movie(
+                id = 2,
+                title = "Interstellar",
+                year = "2014",
+                isFavorite = false
+            ),
+            Movie(
+                id = 3,
+                title = "The Dark Knight",
+                year = "2008",
+                isFavorite = false
+            ),
+            Movie(
+                id = 4,
+                title = "Tenet",
+                year = "2020",
+                isFavorite = false
+            )
+        )
+    )
+
+    override suspend fun searchMovies(query: String): Result<List<Movie>> {
+        delay(500)
+
+        val filteredMovies = movies.value.filter { movie ->
+            movie.title.contains(query, ignoreCase = true)
+        }
+
+        return Result.success(filteredMovies)
+    }
+
+    override suspend fun getMovieById(movieId: Int): Result<Movie> {
+        delay(300)
+
+        val movie = movies.value.find { movie ->
+            movie.id == movieId
+        }
+
+        return if (movie != null) {
+            Result.success(movie)
+        } else {
+            Result.failure(
+                IllegalArgumentException("Movie not found")
+            )
+        }
+    }
+
+    override suspend fun toggleFavorite(movie: Movie) {
+        movies.value = movies.value.map { currentMovie ->
+            if (currentMovie.id == movie.id) {
+                currentMovie.copy(isFavorite = !currentMovie.isFavorite)
+            } else {
+                currentMovie
+            }
+        }
+    }
+
+    override fun getFavoriteMovies(): Flow<List<Movie>> {
+        return movies.map { movieList ->
+            movieList.filter { movie ->
+                movie.isFavorite
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.domain.usecase
+
+import com.example.movietracker.domain.model.Movie
+import com.example.movietracker.domain.repository.MovieRepository
+
+class GetMovieDetailsUseCase(
+    private val repository: MovieRepository
+) {
+    suspend operator fun invoke(movieId: Int): Result<Movie> {
+        return repository.getMovieById(movieId)
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.presentation.movie_detail
+
+import com.example.movietracker.domain.model.Movie
+
+data class MovieDetailUiState(
+    val movie: Movie? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.presentation.movie_detail
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.movietracker.domain.usecase.GetMovieDetailsUseCase
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class MovieDetailViewModel(
+    private val getMovieDetailsUseCase: GetMovieDetailsUseCase,
+    private val movieId: Int
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(MovieDetailUiState())
+    val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
+
+    init {
+        loadMovieDetails()
+    }
+
+    private fun loadMovieDetails() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null
+                )
+            }
+
+            val result = getMovieDetailsUseCase(movieId)
+
+            result
+                .onSuccess { movie ->
+                    _uiState.update {
+                        it.copy(
+                            movie = movie,
+                            isLoading = false,
+                            errorMessage = null
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            movie = null,
+                            isLoading = false,
+                            errorMessage = error.message ?: "Something went wrong"
+                        )
+                    }
+                }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.presentation.movie_detail
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.example.movietracker.domain.usecase.GetMovieDetailsUseCase
+
+class MovieDetailViewModelFactory(
+    private val getMovieDetailsUseCase: GetMovieDetailsUseCase,
+    private val movieId: Int
+) : ViewModelProvider.Factory {
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return MovieDetailViewModel(
+            getMovieDetailsUseCase = getMovieDetailsUseCase,
+            movieId = movieId
+        ) as T
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.di
+
+import com.example.movietracker.data.repository.FakeMovieRepository
+import com.example.movietracker.domain.repository.MovieRepository
+import com.example.movietracker.domain.usecase.GetFavoriteMoviesUseCase
+import com.example.movietracker.domain.usecase.GetMovieDetailsUseCase
+import com.example.movietracker.domain.usecase.SearchMoviesUseCase
+import com.example.movietracker.domain.usecase.ToggleFavoriteMovieUseCase
+
+object AppContainer {
+
+    private val movieRepository: MovieRepository = FakeMovieRepository()
+
+    val searchMoviesUseCase: SearchMoviesUseCase =
+        SearchMoviesUseCase(movieRepository)
+
+    val toggleFavoriteMovieUseCase: ToggleFavoriteMovieUseCase =
+        ToggleFavoriteMovieUseCase(movieRepository)
+
+    val getFavoriteMoviesUseCase: GetFavoriteMoviesUseCase =
+        GetFavoriteMoviesUseCase(movieRepository)
+
+    val getMovieDetailsUseCase: GetMovieDetailsUseCase =
+        GetMovieDetailsUseCase(movieRepository)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.example.movietracker.presentation.movie_detail
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.movietracker.di.AppContainer
+
+@Composable
+fun MovieDetailScreen(
+    movieId: Int,
+    onBackClick: () -> Unit,
+    viewModel: MovieDetailViewModel = viewModel(
+        factory = MovieDetailViewModelFactory(
+            getMovieDetailsUseCase = AppContainer.getMovieDetailsUseCase,
+            movieId = movieId
+        )
+    )
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    MovieDetailContent(
+        uiState = uiState,
+        onBackClick = onBackClick
+    )
+}
+
+@Composable
+private fun MovieDetailContent(
+    uiState: MovieDetailUiState,
+    onBackClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        when {
+            uiState.isLoading -> {
+                CircularProgressIndicator()
+            }
+
+            uiState.errorMessage != null -> {
+                Text(text = uiState.errorMessage)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onBackClick) {
+                    Text(text = "Back")
+                }
+            }
+
+            uiState.movie != null -> {
+                Text(text = "Movie Detail Screen")
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(text = "Title: ${uiState.movie.title}")
+                Text(text = "Year: ${uiState.movie.year}")
+                Text(text = "Favorite: ${uiState.movie.isFavorite}")
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(onClick = onBackClick) {
+                    Text(text = "Back")
+                }
+            }
+        }
+    }
+}
