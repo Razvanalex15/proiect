@@ -85,33 +85,38 @@ import kotlinx.coroutines.flow.map
 
 class FakeMovieRepository : MovieRepository {
 
-    private val movies = MutableStateFlow(
-        listOf(
-            Movie(
-                id = 1,
-                title = "Inception",
-                year = "2010",
-                isFavorite = false
-            ),
-            Movie(
-                id = 2,
-                title = "Interstellar",
-                year = "2014",
-                isFavorite = false
-            ),
-            Movie(
-                id = 3,
-                title = "The Dark Knight",
-                year = "2008",
-                isFavorite = false
-            ),
-            Movie(
-                id = 4,
-                title = "Tenet",
-                year = "2020",
-                isFavorite = false
-            )
+   private val movies = MutableStateFlow(
+    listOf(
+        Movie(
+            id = 1,
+            title = "Inception",
+            year = "2010",
+            posterUrl = null,
+            isFavorite = false
+        ),
+        Movie(
+            id = 2,
+            title = "Interstellar",
+            year = "2014",
+            posterUrl = null,
+            isFavorite = false
+        ),
+        Movie(
+            id = 3,
+            title = "The Dark Knight",
+            year = "2008",
+            posterUrl = null,
+            isFavorite = false
+        ),
+        Movie(
+            id = 4,
+            title = "Tenet",
+            year = "2020",
+            posterUrl = null,
+            isFavorite = false
         )
+    )
+)
     )
 
     override suspend fun searchMovies(query: String): List<Movie> {
