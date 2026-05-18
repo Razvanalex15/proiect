@@ -26,6 +26,41 @@ object AppContainer {
 
 
 
+val result = searchMoviesUseCase(_uiState.value.query)
+
+result
+    .onSuccess { movies ->
+        _uiState.update {
+            it.copy(
+                movies = movies,
+                isLoading = false
+            )
+        }
+    }
+    .onFailure {
+        _uiState.update {
+            it.copy(
+                isLoading = false
+            )
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
