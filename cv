@@ -1,36 +1,14 @@
-package com.example.movietracker.domain.repository
-
-import com.example.movietracker.domain.model.Movie
-import kotlinx.coroutines.flow.Flow
-
-interface MovieRepository {
-    suspend fun searchMovies(query: String): Result<List<Movie>>
-
-    suspend fun toggleFavorite(movie: Movie)
-
-    fun getFavoriteMovies(): Flow<List<Movie>>
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-override suspend fun searchMovies(query: String): Result<List<Movie>> {
-    delay(500)
-
-    val filteredMovies = movies.value.filter {
-        it.title.contains(query, ignoreCase = true)
-    }
-
-    return Result.success(filteredMovies)
-}
+MovieListContent(
+    uiState = uiState,
+    onQueryChanged = { query ->
+        viewModel.onEvent(MovieListUiEvent.QueryChanged(query))
+    },
+    onSearchClick = {
+        viewModel.onEvent(MovieListUiEvent.SearchClicked)
+    },
+    onMovieClick = onMovieClick,
+    onFavoriteClick = { movie ->
+        viewModel.onEvent(MovieListUiEvent.FavoriteClicked(movie))
+    },
+    onFavoritesClick = onFavoritesClick
+)
