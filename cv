@@ -1,4 +1,4 @@
-package com.example.movietracker.presentation.movie_list
+package com.example.movietracker.presentation.favorites
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,30 +10,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-fun MovieListScreen(
-    onMovieClick: (Int) -> Unit,
-    onFavoritesClick: () -> Unit
+fun FavoritesScreen(
+    onBackClick: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Movie List Screen")
+        Text(text = "Favorites Screen")
 
         Button(
-            onClick = { onMovieClick(1) }
+            onClick = onBackClick
         ) {
-            Text(text = "Open movie details")
-        }
-
-        Button(
-            onClick = onFavoritesClick
-        ) {
-            Text(text = "Open favorites")
+            Text(text = "Back")
         }
     }
 }
+
+
+
+
 
 
 
@@ -55,14 +52,61 @@ fun MovieListScreen(
 
 package com.example.movietracker.presentation.navigation
 
-sealed class Screen(val route: String) {
-    data object MovieList : Screen("movie_list")
-    data object MovieDetail : Screen("movie_detail/{movieId}") {
-        fun createRoute(movieId: Int): String {
-            return "movie_detail/$movieId"
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.movietracker.presentation.favorites.FavoritesScreen
+import com.example.movietracker.presentation.movie_detail.MovieDetailScreen
+import com.example.movietracker.presentation.movie_list.MovieListScreen
+
+@Composable
+fun AppNavGraph() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = Screen.MovieList.route
+    ) {
+        composable(route = Screen.MovieList.route) {
+            MovieListScreen(
+                onMovieClick = { movieId ->
+                    navController.navigate(Screen.MovieDetail.createRoute(movieId))
+                },
+                onFavoritesClick = {
+                    navController.navigate(Screen.Favorites.route)
+                }
+            )
+        }
+
+        composable(
+            route = Screen.MovieDetail.route,
+            arguments = listOf(
+                navArgument("movieId") {
+                    type = NavType.IntType
+                }
+            )
+        ) { backStackEntry ->
+            val movieId = backStackEntry.arguments?.getInt("movieId") ?: return@composable
+
+            MovieDetailScreen(
+                movieId = movieId,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(route = Screen.Favorites.route) {
+            FavoritesScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
-    data object Favorites : Screen("favorites")
 }
 
 
@@ -80,34 +124,29 @@ sealed class Screen(val route: String) {
 
 
 
-package com.example.movietracker.presentation.movie_detail
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 
-@Composable
-fun MovieDetailScreen(
-    movieId: Int,
-    onBackClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = "Movie Detail Screen")
-        Text(text = "Movie ID: $movieId")
 
-        Button(
-            onClick = onBackClick
-        ) {
-            Text(text = "Back")
+
+
+
+
+
+package com.example.movietracker
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import com.example.movietracker.presentation.navigation.AppNavGraph
+import com.example.movietracker.presentation.theme.MovieTrackerTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MovieTrackerTheme {
+                AppNavGraph()
+            }
         }
     }
 }
